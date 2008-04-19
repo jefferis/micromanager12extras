@@ -51,6 +51,11 @@
 #define ERR_GET_F7_MAX_IMAGE_SIZE_FAILED 127
 #define ERR_NOT_IMPLEMENTED 128
 
+//TOFIX - don't know what this is right now
+// In Guppy Tech Manual there is:
+// 00 0A 47 …. Node_Vendor_Id
+#define AVT_VENDOR_ID 0
+
 //////////////////////////////////////////////////////////////////////////////
 // Implementation of the MMDevice and MMCamera interfaces
 //
@@ -137,6 +142,9 @@ private:
    dc1394video_mode_t mode;                                               
    // GJ keep track of whether the camera is interlaced
    bool avtInterlaced;
+   // GJ will store whether we have absolute shutter control
+   // (using a float value in seconds)
+   bool absoluteShutterControl;
    
    dc1394color_coding_t colorCoding;
    dc1394featureset_t features;

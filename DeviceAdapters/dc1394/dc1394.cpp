@@ -39,6 +39,7 @@
 #include <dc1394/control.h>
 #include <dc1394/utils.h>
 #include <dc1394/conversions.h>
+#include <dc1394/vendor/avt.h>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -286,6 +287,54 @@ int Cdc1394::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int Cdc1394::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+   double exposure_ms;
+   uint32_t exposure_us;
+   // TODO Should we be failing silently here?
+   if(!absoluteShutterControl) return DEVICE_OK;
+   
+   if (eAct == MM::AfterSet)
+   {
+      // Get the new exposure time (in ms)
+      pProp->Get(exposure_ms);
+      // Send the new exposure setting to the camera if we have absolute control
+      if(camera->vendor_id==AVT_VENDOR_ID){
+         // AVT has vendor specific code for an extended shutter
+         // this accepts shutter times in µs which makes it easier to work with
+         // OK, set using extended register, MM exposure is in ms so *1000 -> us
+         exposure_us = (uint32_t) 1000.0*exposure_ms;
+         err=dc1394_avt_set_extented_shutter(camera,exposure_us);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+      } else {
+         // set using ordinary absolute shutter dc1394 function
+         // this expects a float in seconds
+         float minAbsShutter, maxAbsShutter;
+         err = dc1394_feature_get_absolute_boundaries(camera, DC1394_FEATURE_SHUTTER, &minAbsShutter, &maxAbsShutter);
+         float exposure_s=1000.0f*(float)exposure_ms;
+         if(minAbsShutter>exposure_s || exposure_s>maxAbsShutter) return DEVICE_ERR;
+         
+         err=dc1394_feature_set_absolute_value(camera,DC1394_FEATURE_SHUTTER,exposure_s);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+      }
+   }
+   else if (eAct == MM::BeforeGet)
+   {  
+      if(camera->vendor_id==AVT_VENDOR_ID){
+         // AVT has vendor specific code for an extended shutter
+         // this accepts shutter times in µs which makes it easier to work with
+         err=dc1394_avt_get_extented_shutter(camera,&exposure_us);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+         // convert it to milliseconds
+         exposure_ms = 0.001 * (double) exposure_us;         
+      } else {
+          // set using ordinary absolute shutter dc1394 function
+          // this expects a float in seconds
+         float exposure_s;
+         err=dc1394_feature_get_absolute_value(camera,DC1394_FEATURE_SHUTTER,&exposure_s);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+         exposure_ms=1000.0 * (double) exposure_s;
+      }      
+      pProp->Set(exposure_ms);
+   }
    return DEVICE_OK;
 }
 
@@ -644,6 +693,18 @@ int Cdc1394::Initialize()
              assert(nRet == DEVICE_OK);
              nRet = SetPropertyLimits("Shutter", shutterMin, shutterMax);
              assert(nRet == DEVICE_OK);
+             
+             // Check if shutter has absolute control
+             dc1394bool_t absolute;
+             absoluteShutterControl=false;
+             err = dc1394_feature_has_absolute_control(camera, DC1394_FEATURE_SHUTTER, &absolute);
+             if(absolute==DC1394_TRUE) absoluteShutterControl=true;
+             if(!absoluteShutterControl && camera->vendor_id==AVT_VENDOR_ID){
+                // for AVT cameras, check if we have access to the extended shutter mode
+                uint32_t timebase_id;
+                err=dc1394_avt_get_extented_shutter(camera,&timebase_id);
+                if(err==DC1394_SUCCESS) absoluteShutterControl=true;
+             }
           }
           else if (strcmp(featureLabel, "Exposure") == 0) 
           {
@@ -923,9 +984,8 @@ double Cdc1394::GetExposure() const
 
 void Cdc1394::SetExposure(double dExp)
 {
-   // TODO: check if the exposure can be set.  It can't for the iSight:
-   dExp = 30.0;
-   SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(dExp));
+   if(absoluteShutterControl) 
+      SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(dExp));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
