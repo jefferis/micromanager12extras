@@ -108,6 +108,7 @@ public:
    int OnShutter(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnTemperature(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnExternalTrigger(MM::PropertyBase* pProp, MM::ActionType eAct);
 
    // high-speed interface
    int StartSequenceAcquisition(long numImages, double interval_ms);

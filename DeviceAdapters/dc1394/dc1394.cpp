@@ -487,6 +487,31 @@ int Cdc1394::OnShutter(MM::PropertyBase* pProp, MM::ActionType eAct)
    return OnFeature(pProp, eAct, shutter, shutterMin, shutterMax, DC1394_FEATURE_SHUTTER);
 }
 
+// ExternalTrigger
+int Cdc1394::OnExternalTrigger(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   dc1394switch_t pwr;
+   long triggerStatus;
+   if (eAct == MM::AfterSet)
+   {
+      pProp->Get(triggerStatus);
+      pwr = (triggerStatus==1L) ? DC1394_ON : DC1394_OFF;
+      err = dc1394_external_trigger_set_power(camera, pwr);
+      logMsg_.clear();
+      logMsg_ << "Setting external trigger state:" << triggerStatus << " err:" << err;
+      LogMessage(logMsg_.str().c_str(), true);
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+      err = dc1394_external_trigger_get_power(camera, &pwr);
+      logMsg_.clear();
+      logMsg_ << "Getting external trigger state:" << triggerStatus << " err: " << err;
+      LogMessage (logMsg_.str().c_str(), true);
+      triggerStatus = (pwr==DC1394_ON) ? 1L : 0L;
+      pProp->Set(triggerStatus);
+   }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // API methods
 // ~~~~~~~~~~~
@@ -729,6 +754,28 @@ int Cdc1394::Initialize()
                 LogMessage (logMsg_.str().c_str(), false);                
              }
           }
+          else if (strcmp(featureLabel, "Trigger") == 0) 
+          {
+             // Fetch the actual trigger status from the camera
+             dc1394switch_t pwr;
+             err = dc1394_external_trigger_get_power(camera,&pwr);
+             assert(err=DC1394_SUCCESS);
+
+            // Name
+            int nRet = CreateProperty(MM::g_Keyword_Name, "ExternalTrigger", MM::String, true);
+            assert(nRet == DEVICE_OK);
+            // Description
+            nRet = CreateProperty(MM::g_Keyword_Description, "Camera external trigger state", MM::String, true);
+            assert(nRet == DEVICE_OK);
+
+            pAct = new CPropertyAction (this, &Cdc1394::OnExternalTrigger);
+            
+            nRet = CreateProperty(MM::g_Keyword_State, 
+               pwr==DC1394_ON ? "1" : "0", MM::Integer, false, pAct); 
+            assert(nRet == DEVICE_OK);
+            AddAllowedValue(MM::g_Keyword_State, "0"); // Closed
+            AddAllowedValue(MM::g_Keyword_State, "1"); // Open             
+          }
           else if (strcmp(featureLabel, "Exposure") == 0) 
           {
              // TODO: offer option to switch between auto, manual and one-push modes
@@ -736,7 +783,7 @@ int Cdc1394::Initialize()
              err = dc1394_feature_get_boundaries(camera, DC1394_FEATURE_EXPOSURE, &exposureMin, &exposureMax);
           }
        }
-    }
+   }
 
 
    // synchronize all properties
