@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
-#include "../../Driver/labjackusb.h"
+#include <labjackusb.h>
 
 
 typedef unsigned char uint8;

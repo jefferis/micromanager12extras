@@ -61,9 +61,7 @@ using namespace std;
    }
 #endif
 
-#include "../../../3rdparty/DataTranslation/SDK/include/olmem.h"
-#include "../../../3rdparty/DataTranslation/SDK/include/olerrors.h"
-#include "../../../3rdparty/DataTranslation/SDK/include/oldaapi.h"
+#include "u3.h"
 
 /* simple structure used with board */
 
