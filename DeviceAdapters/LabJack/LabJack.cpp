@@ -63,100 +63,30 @@ using namespace std;
 
 #include "u3.h"
 
-/* simple structure used with board */
-
-typedef struct tag_board {
-   HDEV hdrvr;         /* device handle            */
-   HDASS hdass_do;        /* sub system handle digital out*/
-   HDASS hdass_da;        /* sub system handle DAC */
-   ECODE status;       /* board error status       */
-   HBUF  hbuf;         /* sub system buffer handle */
-   PWORD lpbuf;        /* buffer pointer           */
-   char name[MAX_BOARD_NAME_LENGTH];  /* string for board name    */
-   char entry[MAX_BOARD_NAME_LENGTH]; /* string for board name    */
-} BOARD;
-
-typedef BOARD* LPBOARD;
-static BOARD board;
-
-
-/*
-this is a callback function of olDaEnumBoards, it gets the 
-strings of the Open Layers board and attempts to initialize
-the board.  If successful, enumeration is halted.
-*/
-BOOL CALLBACK GetDriver( LPSTR lpszName, LPSTR lpszEntry, LPARAM lParam )   
-
-{
-   LPBOARD lpboard = (LPBOARD)(LPVOID)lParam;
-   
-   /* fill in board strings */
-
-#ifdef WIN32
-   strncpy(lpboard->name,lpszName,MAX_BOARD_NAME_LENGTH-1);
-   strncpy(lpboard->entry,lpszEntry,MAX_BOARD_NAME_LENGTH-1);
-#else
-   lstrcpyn(lpboard->name,lpszName,MAX_BOARD_NAME_LENGTH-1);
-   lstrcpyn(lpboard->entry,lpszEntry,MAX_BOARD_NAME_LENGTH-1);
-#endif
-
-   /* try to open board */
-
-   lpboard->status = olDaInitialize(lpszName,&lpboard->hdrvr);
-   if   (lpboard->hdrvr != NULL)
-      return FALSE;          /* false to stop enumerating */
-   else                      
-      return TRUE;           /* true to continue          */
-}
+HANDLE hDevice;
+u3CalibrationInfo caliInfo;
 
 /*
  * Initilize the global board handle
  */
 int InitializeTheBoard()
 {
-   if (board.hdrvr != 0)
+   long error;
+   
+   //Open first found U3 over USB
+   int localID = -1;
+   if( (hDevice = openUSBConnection(localID)) == NULL)
+      goto done;
+
+   //Get calibration information from U3
+   if(getCalibrationInfo(hDevice, &caliInfo) < 0)
+      goto close;
+   close:
+      if(error > 0)
+      printf("Received an error code of %ld\n", error);
+      closeUSBConnection(hDevice);
+   done:
       return DEVICE_OK;
-
-   // initialize the board
-   /* Get first available Open Layers board */
-   board.hdrvr = NULL;
-   int ret = olDaEnumBoards(GetDriver,(LPARAM)(LPBOARD)&board);
-   if (ret != OLNOERROR)
-      return ret;
-
-   /* check for error within callback function */
-   if (board.status != OLNOERROR)
-      return board.status;
-
-   /* check for NULL driver handle - means no boards */
-   if (board.hdrvr == NULL)
-      return ERR_BOARD_NOT_FOUND;
-
-   /* get handle to DOUT sub system */
-   ret = olDaGetDASS(board.hdrvr, OLSS_DOUT, 0, &board.hdass_do);
-   if (ret != OLNOERROR)
-      return ret;
-
-   ret = olDaGetDASS(board.hdrvr, OLSS_DA, 0, &board.hdass_da);
-   if (ret != OLNOERROR)
-      return ret;
-
-   /* set subsystem for single value operation */
-   ret = olDaSetDataFlow(board.hdass_do, OL_DF_SINGLEVALUE);
-   if (ret != OLNOERROR)
-      return ret;
-   ret = olDaSetDataFlow(board.hdass_da, OL_DF_SINGLEVALUE);
-   if (ret != OLNOERROR)
-      return ret;
-
-   ret = olDaConfig(board.hdass_do);
-   if (ret != OLNOERROR)
-      return ret;
-   ret = olDaConfig(board.hdass_da);
-   if (ret != OLNOERROR)
-      return ret;
-
-   return DEVICE_OK;
 }
 
 
@@ -281,20 +211,17 @@ int CLJSwitch::Initialize()
 
 int CLJSwitch::Shutdown()
 {
-   olDaReleaseDASS(board.hdass_do);
-   olDaReleaseDASS(board.hdass_da);
-   olDaTerminate(board.hdrvr);
-   board.hdrvr = 0;
+   closeUSBConnection(hDevice);
    initialized_ = false;
    return DEVICE_OK;
 }
 
 int CLJSwitch::WriteToPort(long value)
 {
-   //Out32(g_addrLPT1, buf);
-   int ret = olDaPutSingleValue(board.hdass_do, value, 0 /* channel */, 1.0 /*gain*/);
-   if (ret != OLNOERROR)
-      return ret;
+   long error = eDO(hDevice, 1, 0 /*channel*/, value);
+   
+   if (error != 0)
+      return error;
 
    return DEVICE_OK;
 }
@@ -357,18 +284,18 @@ int CLJDA::Initialize()
       return ret;
 
    // obtain scaling info
-
-   ret = olDaGetRange(board.hdass_da, &maxV_, &minV_);
-   if (ret != OLNOERROR)
-      return ret;
-
-   ret = olDaGetEncoding(board.hdass_da, &encoding_);
-   if (ret != OLNOERROR)
-      return ret;
-
-   ret = olDaGetResolution(board.hdass_da, &resolution_);
-   if (ret != OLNOERROR)
-      return ret;
+   // TOFIX: GJ need to get these values 
+   // ret = olDaGetRange(board.hdass_da, &maxV_, &minV_);
+   // if (ret != OLNOERROR)
+   //    return ret;
+   // 
+   // ret = olDaGetEncoding(board.hdass_da, &encoding_);
+   // if (ret != OLNOERROR)
+   //    return ret;
+   // 
+   // ret = olDaGetResolution(board.hdass_da, &resolution_);
+   // if (ret != OLNOERROR)
+   //    return ret;
 
 
    // set property list
@@ -402,10 +329,7 @@ int CLJDA::Initialize()
 
 int CLJDA::Shutdown()
 {
-   olDaReleaseDASS(board.hdass_do);
-   olDaReleaseDASS(board.hdass_da);
-   olDaTerminate(board.hdrvr);
-   board.hdrvr = 0;
+   closeUSBConnection(hDevice);
    initialized_ = false;
    return DEVICE_OK;
 }
@@ -415,29 +339,32 @@ int CLJDA::SetSignal(double volts)
    return SetProperty(g_volts, CDeviceUtils::ConvertToString(volts));
 }
 
-int CLJDA::WriteToPort(long value)
+int CLJDA::SetVolts(double volts)
 {
-   int ret = olDaPutSingleValue(board.hdass_da, value, channel_, 1.0 /*gain*/);
-   if (ret != OLNOERROR)
-      return ret;
+   long error = eDAC(hDevice, &caliInfo, 0, channel_, volts, 0, 0, 0);
+
+   if (error != 0)
+      return error;
 
    return DEVICE_OK;
 }
 
-int CLJDA::SetVolts(double volts)
+int CLJDA::OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
-   long value = (long) ((1L<<resolution_)/((float)maxV_ - (float)minV_) * (volts - (float)minV_));
-   value = min((1L<<resolution_)-1,value);
-
-   if (encoding_ != OL_ENC_BINARY) {
-      // convert to 2's comp by inverting the sign bit
-      long sign = 1L << (resolution_ - 1);
-      value ^= sign;
-      if (value & sign)           //sign extend
-         value |= 0xffffffffL << resolution_;
+   if (eAct == MM::BeforeGet)
+   {
+      pProp->Set((long int)channel_);
    }
-   return WriteToPort(value);
+   else if (eAct == MM::AfterSet)
+   {
+      long channel;
+      pProp->Get(channel);
+      if (channel >=1 && channel <=8)
+         channel_ = channel;
+   }
+   return DEVICE_OK;
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Action handlers
@@ -546,6 +473,8 @@ int CLJShutter::Shutdown()
    if (initialized_)
    {
       initialized_ = false;
+      // GJ: Do I need this?
+      closeUSBConnection(hDevice);
    }
    return DEVICE_OK;
 }
@@ -577,10 +506,11 @@ int CLJShutter::Fire(double /*deltaT*/)
 
 int CLJShutter::WriteToPort(long value)
 {
-   int ret = olDaPutSingleValue(board.hdass_do, value, 0 /* channel */, 1.0 /*gain*/);
-   if (ret != OLNOERROR)
-      return ret;
-   //Out32(g_addrLPT1, buf);
+   long error = eDO(hDevice, 1, 0 /*channel*/, value);
+   
+   if (error != 0)
+      return error;
+
    return DEVICE_OK;
 }
 

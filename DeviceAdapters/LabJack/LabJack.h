@@ -114,6 +114,7 @@ public:
    int SetSignal(double volts);
    int GetSignal(double& /*volts*/) {return DEVICE_UNSUPPORTED_COMMAND;}
    int GetLimits(double& minVolts, double& maxVolts) {minVolts = minV_; maxVolts = maxV_; return DEVICE_OK;}
+   int OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct);
 
    // action interface
    // ----------------
