@@ -51,10 +51,9 @@
 #define ERR_GET_F7_MAX_IMAGE_SIZE_FAILED 127
 #define ERR_NOT_IMPLEMENTED 128
 
-//TOFIX - don't know what this is right now
-// In Guppy Tech Manual there is:
+// From Guppy Tech Manual there is:
 // 00 0A 47 …. Node_Vendor_Id
-#define AVT_VENDOR_ID 0
+#define AVT_VENDOR_ID 2631
 
 //////////////////////////////////////////////////////////////////////////////
 // Implementation of the MMDevice and MMCamera interfaces
