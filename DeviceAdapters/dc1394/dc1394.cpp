@@ -699,11 +699,20 @@ int Cdc1394::Initialize()
              absoluteShutterControl=false;
              err = dc1394_feature_has_absolute_control(camera, DC1394_FEATURE_SHUTTER, &absolute);
              if(absolute==DC1394_TRUE) absoluteShutterControl=true;
+
              if(!absoluteShutterControl && camera->vendor_id==AVT_VENDOR_ID){
+                logMsg_.clear();
+                logMsg_ << "Checking AVT absolute shutter\n";
+                LogMessage (logMsg_.str().c_str(), false);
                 // for AVT cameras, check if we have access to the extended shutter mode
                 uint32_t timebase_id;
                 err=dc1394_avt_get_extented_shutter(camera,&timebase_id);
                 if(err==DC1394_SUCCESS) absoluteShutterControl=true;
+             }
+             if(absoluteShutterControl){
+                logMsg_.clear();
+                logMsg_ << "Absolute shutter\n";
+                LogMessage (logMsg_.str().c_str(), false);                
              }
           }
           else if (strcmp(featureLabel, "Exposure") == 0) 
