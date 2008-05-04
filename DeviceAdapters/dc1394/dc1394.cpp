@@ -510,6 +510,7 @@ int Cdc1394::OnExternalTrigger(MM::PropertyBase* pProp, MM::ActionType eAct)
       triggerStatus = (pwr==DC1394_ON) ? 1L : 0L;
       pProp->Set(triggerStatus);
    }
+   return DEVICE_OK;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -756,25 +757,38 @@ int Cdc1394::Initialize()
           }
           else if (strcmp(featureLabel, "Trigger") == 0) 
           {
+             logMsg_.clear();
+             logMsg_ << "Checking External Trigger Status\n";
+             LogMessage (logMsg_.str().c_str(), false);
              // Fetch the actual trigger status from the camera
              dc1394switch_t pwr;
              err = dc1394_external_trigger_get_power(camera,&pwr);
-             assert(err=DC1394_SUCCESS);
+             // and reset the trigger setting to OFF to avoid camera startup problems
+             if(err==DC1394_SUCCESS && pwr==DC1394_ON){
+                pwr=DC1394_OFF;
+                err = dc1394_external_trigger_set_power(camera,pwr);
+             }
+             if(err==DC1394_SUCCESS){
+                // if(pwr==DC1394_ON) logMsg_ << "External trigger currently on\n";
+                // if(pwr==DC1394_OFF) logMsg_ << "External trigger currently off\n";
+                // LogMessage (logMsg_.str().c_str(), false);
+          
+                pAct = new CPropertyAction (this, &Cdc1394::OnExternalTrigger);
 
-            // Name
-            int nRet = CreateProperty(MM::g_Keyword_Name, "ExternalTrigger", MM::String, true);
-            assert(nRet == DEVICE_OK);
-            // Description
-            nRet = CreateProperty(MM::g_Keyword_Description, "Camera external trigger state", MM::String, true);
-            assert(nRet == DEVICE_OK);
-
-            pAct = new CPropertyAction (this, &Cdc1394::OnExternalTrigger);
-            
-            nRet = CreateProperty(MM::g_Keyword_State, 
-               pwr==DC1394_ON ? "1" : "0", MM::Integer, false, pAct); 
-            assert(nRet == DEVICE_OK);
-            AddAllowedValue(MM::g_Keyword_State, "0"); // Closed
-            AddAllowedValue(MM::g_Keyword_State, "1"); // Open             
+                logMsg_.clear();
+                logMsg_ << "Creating ExternalTrigger property\n";
+                LogMessage (logMsg_.str().c_str(), false);
+                
+                nRet = CreateProperty("ExternalTrigger", 
+                   pwr==DC1394_ON ? "1" : "0", MM::Integer, false, pAct); 
+                assert(nRet == DEVICE_OK);
+                AddAllowedValue("ExternalTrigger", "0"); // Closed
+                AddAllowedValue("ExternalTrigger", "1"); // Open             
+             } else {
+                logMsg_.clear();
+                logMsg_ << "Unable to check external trigger status\n";
+                LogMessage (logMsg_.str().c_str(), false);
+             }
           }
           else if (strcmp(featureLabel, "Exposure") == 0) 
           {
