@@ -600,11 +600,6 @@ int Cdc1394::Initialize()
    maxNrIntegration = pow(2, (16 - depth));
    GetBytesPerPixel();
 
-   // This should be moved to the bottom.  Check now if the camera is actually functional
-   nRet = ResizeImageBuffer();
-   if (nRet != DEVICE_OK)
-      return nRet;
-
    // Frame integration
    if (depth == 8)
    {
@@ -813,6 +808,11 @@ int Cdc1394::Initialize()
    if (nRet != DEVICE_OK)
       return nRet;
    */
+
+   // This should be moved to the bottom.  Check now if the camera is actually functional
+   nRet = ResizeImageBuffer();
+   if (nRet != DEVICE_OK)
+      return nRet;
 
    // We seem to need this on the Mac...
    SetProperty(MM::g_Keyword_Binning,"1");
