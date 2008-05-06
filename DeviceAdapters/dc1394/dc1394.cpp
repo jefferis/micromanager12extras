@@ -212,6 +212,10 @@ int Cdc1394::OnMode(MM::PropertyBase* pProp, MM::ActionType eAct)
          err = dc1394_video_get_data_depth(camera, &depth);
          if (err != DC1394_SUCCESS)
             LogMessage ("Error establishing bit-depth\n");
+         char tempStr[256];
+         sprintf(tempStr, "Bit-depth %lubit \n", depth);
+         LogMessage (tempStr);
+         
          maxNrIntegration = pow(2,(16-depth));
          GetBytesPerPixel ();
 
@@ -484,7 +488,7 @@ int Cdc1394::OnShutter(MM::PropertyBase* pProp, MM::ActionType eAct)
       // Need to turn off absolute mode so that we can set it using integer shutter values
       dc1394_feature_set_absolute_control(camera, DC1394_FEATURE_SHUTTER, DC1394_OFF);
    }
-   return OnFeature(pProp, eAct, shutter, shutterMin, shutterMax, DC1394_FEATURE_SHUTTER);
+  return OnFeature(pProp, eAct, shutter, shutterMin, shutterMax, DC1394_FEATURE_SHUTTER);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -612,6 +616,7 @@ int Cdc1394::Initialize()
    assert(nRet == DEVICE_OK);
    vector<string> pixelTypeValues;
       pixelTypeValues.push_back(g_PixelType_8bit);
+      pixelTypeValues.push_back(g_PixelType_16bit);
    nRet = SetAllowedValues(MM::g_Keyword_PixelType, pixelTypeValues);
    if (nRet != DEVICE_OK)
       return nRet;
@@ -873,6 +878,14 @@ void Cdc1394::avtDeinterlaceMono16(uint16_t* dest, uint16_t* src, uint32_t outpu
 	}
 }
 
+void Cdc1394::swapByteOrderMono16(uint8_t* dest, uint8_t* src, uint32_t bufSize) {
+   // note that this expects the image buffers to be cast to 8 bit
+   for (uint32_t i=0;i<bufSize;i+=2){
+      dest[i]=src[i+1];
+      dest[i+1]=src[i];
+   }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Function name   : Cdc1394::SnapImage()
 // Description     : Acquires a single frame and stores it in the internal
@@ -964,13 +977,14 @@ int Cdc1394::ProcessImage(dc1394video_frame_t *frame, const unsigned char* desti
       {
          void* src = (void *) frame->image;
          uint8_t* pixBuffer = const_cast<unsigned char*> (destination);
-		 // GJ: Deinterlace image if required
-         if (avtInterlaced) 
-            avtDeinterlaceMono8 (pixBuffer, (uint8_t*) src, width, height);
-		   else 
-            memcpy (pixBuffer, src, GetImageBufferSize());
-      }
-      else if (integrateFrameNumber > 1)
+		   // GJ: Deinterlace image if required
+         if (avtInterlaced) {
+            avtDeinterlaceMono8(pixBuffer, (uint8_t*) src, width, height);
+         }
+         else if(depth>8 && depth<=16 && frame->little_endian==DC1394_TRUE){
+            swapByteOrderMono16(pixBuffer, (uint8_t*) src, width*height*2);
+         }
+		   else memcpy (pixBuffer, src, GetImageBufferSize());
       {
          void* src = (void *) frame->image;
          uint8_t* pixBuffer = const_cast<unsigned char*> (destination);
@@ -1019,7 +1033,7 @@ double Cdc1394::GetExposure() const
 void Cdc1394::SetExposure(double dExp)
 {
    if(absoluteShutterControl) 
-      SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(dExp));
+   SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(dExp));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1162,7 +1176,7 @@ int Cdc1394::ResizeImageBuffer()
 		  logMsg_ <<  "Framerate set to " << framerate;
    }
    LogMessage (logMsg_.str().c_str(), true);
-   
+      
    // Start the image capture
    if (dc1394_capture_setup(camera,dmaBufferSize,DC1394_CAPTURE_FLAGS_DEFAULT) != DC1394_SUCCESS) 
       return ERR_SET_CAPTURE_FAILED;

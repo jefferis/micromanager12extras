@@ -135,6 +135,8 @@ private:
    void avtDeinterlaceMono8(uint8_t* dest, uint8_t* src, uint32_t outputWidth, uint32_t outputHeight);
    void avtDeinterlaceMono16(uint16_t* dest, uint16_t* src, uint32_t outputWidth, uint32_t outputHeight);
    
+   void swapByteOrderMono16(uint8_t* dest, uint8_t* src, uint32_t bufSize);
+   
    bool InArray(dc1394framerate_t *array, int size, uint32_t num);
    void GetBytesPerPixel();
 
