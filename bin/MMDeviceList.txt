@@ -7,7 +7,13 @@ ASIFW1000,ASIShutter,ASI Shutter,3
 ASIStage,ZStage,Add-on Z-stage,5
 ASIStage,XYStage,XY Stage,6
 ASIStage,CRIF,CRIF,9
+ASIStage,AZ100 Turret,AZ100 Turret,4
 Conix,ConixQuadFilter,External Filter Cube Switcher,4
+CSUX,CSUX-Hub,CSUX Hub (Needed for CSUX),8
+CSUX,CSUX-Filter Wheel,Filter Wheel,4
+CSUX,CSUX-Dichroic Mirror,Dichroic Mirror,4
+CSUX,CSUX-Shutter,Shutter,3
+CSUX,CSUX-DriveSpeed,DriveSpeed,4
 DAZStage,DA Z Stage,DA-controlled Z-stage,5
 DemoCamera,DCam,Demo camera,2
 DemoCamera,DWheel,Demo filter wheel,4
@@ -104,6 +110,8 @@ ZeissCAN,ZeissTubelens,Tubelens,4
 ZeissCAN,ZeissExcitationLampSwitcher,Lamp Switcher,4
 ZeissCAN,ZeissHalogenLamp,Halogen Lamp,3
 ZeissCAN,Focus,Z-Drive,5
+ZeissCAN,ZeissFilterWheel1,FilterWheel 1,4
+ZeissCAN,ZeissFilterWheel2,FilterWheel 2,4
 ZeissCAN29,ZeissScope,Zeiss AxioObserver controlled through serial interface,8
 ZeissCAN29,ZeissReflectorTurret,Reflector Turret (dichroics),4
 ZeissCAN29,ZeissObjectiveTurret,Objective Turret,4

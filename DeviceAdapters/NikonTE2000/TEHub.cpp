@@ -10,7 +10,7 @@
 // COPYRIGHT:     University of California San Francisco
 // LICENSE:       This file is distributed under the BSD license.
 //                License text is included with the source distribution.
-// CVS:           $Id: TEHub.cpp 897 2008-02-06 20:20:54Z nenad $
+// CVS:           $Id: TEHub.cpp 1136 2008-04-28 22:41:49Z nico $
 //
 
 #define _CRT_SECURE_NO_DEPRECATE
@@ -413,7 +413,7 @@ int TEHub::SetLampOnOff(MM::Device& device, MM::Core& core, int state)
    return DEVICE_OK;
 }
 
-int TEHub::SetLampControltarget(MM::Device& device, MM::Core& core, int target)
+int TEHub::SetLampControlTarget(MM::Device& device, MM::Core& core, int target)
 {
    const char* command = "LCS";
    ostringstream os;
@@ -429,6 +429,24 @@ int TEHub::SetLampControltarget(MM::Device& device, MM::Core& core, int target)
    if (ret != DEVICE_OK)
       return ret;
 
+   return DEVICE_OK;
+}
+
+int TEHub::GetLampControlTarget(MM::Device& device, MM::Core& core, int& target)
+{
+   const char* command = "LCR";
+
+   // send command
+   int ret = ExecuteCommand(device, core, "r", command);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   string value;
+   ret = ParseResponse(device, core, command, value);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   target = atoi(value.c_str());
    return DEVICE_OK;
 }
 

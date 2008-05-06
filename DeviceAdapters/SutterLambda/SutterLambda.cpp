@@ -16,7 +16,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: SutterLambda.cpp 918 2008-02-07 21:50:44Z nico $
+// CVS:           $Id: SutterLambda.cpp 1154 2008-05-05 17:40:24Z nico $
 //
 
 #ifdef WIN32
@@ -955,7 +955,7 @@ int DG4Shutter::OnDelay(MM::PropertyBase* pProp, MM::ActionType eAct)
 // ~~~~~~~~~~~~~~~~~~~~~~~
 
 DG4Wheel::DG4Wheel() :
-      initialized_(false), numPos_(10), name_(g_DG4WheelName), curPos_(0), busy_(false),
+      initialized_(false), numPos_(13), name_(g_DG4WheelName), curPos_(0), busy_(false),
       answerTimeoutMs_(200)
 {
    InitializeDefaultErrorMessages();

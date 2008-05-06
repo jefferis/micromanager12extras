@@ -54,6 +54,7 @@ Source: micro-manager-1.2\mmgr_dal_Nikon.dll; DestDir: {app}; Flags: ignoreversi
 Source: micro-manager-1.2\mmgr_dal_ASIFW1000.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_ASIStage.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_Yokogawa.dll; DestDir: {app}; Flags: ignoreversion
+Source: micro-manager-1.2\mmgr_dal_CSUX.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_QCam.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_USBManager.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_K8055.dll; DestDir: {app}; Flags: ignoreversion

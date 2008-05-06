@@ -17,7 +17,7 @@
 //                IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
-// CVS:           $Id: NikonTE2000.h 923 2008-02-07 22:17:40Z nico $
+// CVS:           $Id: NikonTE2000.h 1133 2008-04-25 16:22:56Z nico $
 //
 
 #ifndef _NIKON_TE2000_H_
@@ -247,6 +247,7 @@ public:
    // ----------------
    int OnOnOff(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnVoltage(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnControl(MM::PropertyBase* pProp, MM::ActionType eAct);
 
    // additional (local) API
    // ----------------------

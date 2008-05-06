@@ -144,7 +144,7 @@ int PIZStage::Initialize()
    // Remote/Local
    pAct = new CPropertyAction (this, &PIZStage::OnInterface);
    CreateProperty("Interface", "Computer", MM::String, false, pAct);
-   AddAllowedValue("Interface", "Remote interface command control");
+   AddAllowedValue("Interface", "Remote: Interface commands mode");
    AddAllowedValue("Interface", "Local: Frontpanel control");
    
    ret = UpdateStatus();

@@ -64,6 +64,8 @@ const char* g_ZeissLampMirror = "ZeissExcitationLampSwitcher";
 const char* g_ZeissHalogenLamp = "ZeissHalogenLamp";
 const char* g_ZeissFocusName = "Focus";
 const char* g_ZeissExternal = "External-Internal Shutter";
+const char* g_ZeissFilterWheel1 = "ZeissFilterWheel1";
+const char* g_ZeissFilterWheel2 = "ZeissFilterWheel2";
 
 // List of Turret numbers (from Zeiss documentation)
 int g_ReflectorTurret = 1;
@@ -97,6 +99,8 @@ MODULE_API void InitializeModuleData()
    AddAvailableDeviceName(g_ZeissLampMirror,"Lamp Switcher"); 
    AddAvailableDeviceName(g_ZeissHalogenLamp,"Halogen Lamp"); 
    AddAvailableDeviceName(g_ZeissFocusName,"Z-Drive"); 
+   AddAvailableDeviceName(g_ZeissFilterWheel1,"FilterWheel 1"); 
+   AddAvailableDeviceName(g_ZeissFilterWheel2,"FilterWheel 2"); 
 }
 using namespace std;
 
@@ -135,6 +139,10 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
         return new HalogenLamp();
    else if (strcmp(deviceName, g_ZeissFocusName) == 0)
       return new FocusStage();
+   else if (strcmp(deviceName, g_ZeissFilterWheel1) == 0)
+      return new FilterWheel(1);
+   else if (strcmp(deviceName, g_ZeissFilterWheel2) == 0)
+      return new FilterWheel(2);
 
    return 0;
 }
@@ -2835,3 +2843,169 @@ int FocusStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct)
    return DEVICE_OK;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// FilterWheel
+///////////////////////////////////////////////////////////////////////////////
+FilterWheel::FilterWheel(int wheelNr):
+   initialized_ (false),
+   pos_(1),
+   numPos_(5)
+{
+   InitializeDefaultErrorMessages();
+
+   wheelNr_ = wheelNr;
+   
+   if (wheelNr_ == 1) {
+      name_ = g_ZeissFilterWheel1;
+      turretId_ = g_FilterWheel1;
+   } else if (wheelNr_ == 2) {
+      name_ = g_ZeissFilterWheel2;
+      turretId_ = g_FilterWheel2;
+   }
+
+   // TODO provide error messages
+   SetErrorText(ERR_SCOPE_NOT_ACTIVE, "Zeiss Scope is not initialized.  It is needed for the Zeiss Reflector Turret to work");
+   SetErrorText(ERR_INVALID_TURRET_POSITION, "A position was requested that is not available on this turret");
+   SetErrorText(ERR_MODULE_NOT_FOUND, "This module was not found in the Zeiss microscope");
+
+   // Create pre-initialization properties
+   // ------------------------------------
+
+   // Name
+   CreateProperty(MM::g_Keyword_Name, name_.c_str(), MM::String, true);
+
+   // Description
+   CreateProperty(MM::g_Keyword_Description, "Zeiss Filter Wheel", MM::String, true);
+
+   UpdateStatus();
+}
+
+FilterWheel::~FilterWheel()
+{
+   Shutdown();
+}
+
+void FilterWheel::GetName(char* name) const
+{
+   CDeviceUtils::CopyLimitedString(name, name_.c_str());
+}
+
+int FilterWheel::Initialize()
+{
+   if (!g_hub.initialized_)
+      return ERR_SCOPE_NOT_ACTIVE;
+
+   // check if this turret exists:
+   bool present;
+   int ret = g_turret.GetPresence(*this, *GetCoreCallback(), turretId_, present);
+   if (ret != DEVICE_OK)
+      return ret;
+   if (!present)
+      return ERR_MODULE_NOT_FOUND;
+
+   // set property list
+   // ----------------
+
+   // State
+   // -----
+   CPropertyAction* pAct = new CPropertyAction(this, &FilterWheel::OnState);
+   ret = CreateProperty(MM::g_Keyword_State, "1", MM::Integer, false, pAct);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   // Label
+   // -----
+   pAct = new CPropertyAction(this, &CStateBase::OnLabel);
+   ret = CreateProperty(MM::g_Keyword_Label, "Position-1", MM::String, false, pAct);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   // create default positions and labels
+   int maxPos;
+   ret = g_turret.GetMaxPosition(*this, *GetCoreCallback(), turretId_, maxPos);
+   if (ret != DEVICE_OK)
+      return ret;
+   numPos_ = maxPos;
+
+   const int bufSize = 32;
+   char buf[bufSize];
+   for (int i=0; i < numPos_; i++)
+   {
+      snprintf(buf, bufSize, "Position-%d", i+1);
+      SetPositionLabel(i, buf);
+   }
+
+   ret = UpdateStatus();
+   if (ret!= DEVICE_OK)
+      return ret;
+
+   initialized_ = true;
+
+   return DEVICE_OK;
+}
+
+int FilterWheel::Shutdown()
+{
+   if (initialized_) 
+      initialized_ = false;
+   return DEVICE_OK;
+}
+
+bool FilterWheel::Busy()
+{
+   bool busy;
+   int ret = g_turret.GetBusy(*this, *GetCoreCallback(), turretId_, busy);
+   if (ret != DEVICE_OK)  // This is bad and should not happen
+   {
+      this->LogMessage("GetBusy failed in FilterWheel::Busy");
+      return false; // error, so say we're not busy
+   }
+
+   return busy;
+}
+
+int FilterWheel::SetPosition(int position)
+{
+   int ret = g_turret.SetPosition(*this, *GetCoreCallback(), turretId_, position);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   return DEVICE_OK;
+}
+
+int FilterWheel::GetPosition(int& position)
+{
+   int ret = g_turret.GetPosition(*this, *GetCoreCallback(), turretId_, position);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   return DEVICE_OK;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Action handlers                                                           
+///////////////////////////////////////////////////////////////////////////////
+
+int FilterWheel::OnState(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      int pos;
+      int ret = GetPosition(pos);
+      if (ret != DEVICE_OK)
+         return ret;
+      pos_ = pos -1;
+      pProp->Set(pos_);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      pProp->Get(pos_);
+      int pos = pos_ + 1;
+      if ((pos > 0) && (pos <= numPos_))
+         return SetPosition(pos);
+      else
+         return ERR_INVALID_TURRET_POSITION;
+   }
+   return DEVICE_OK;
+}

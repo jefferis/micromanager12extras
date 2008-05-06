@@ -10,7 +10,7 @@
 // COPYRIGHT:     University of California San Francisco
 // LICENSE:       This file is distributed under the BSD license.
 //                License text is included with the source distribution.
-// CVS:           $Id: TEHub.h 451 2007-09-11 18:12:11Z nico $
+// CVS:           $Id: TEHub.h 1133 2008-04-25 16:22:56Z nico $
 //
 #ifndef _TEHUB_H_
 #define _TEHUB_H_
@@ -83,7 +83,8 @@ public:
    int SetLampVoltage(MM::Device& device, MM::Core& core, double voltage);
    int GetLampVoltage(MM::Device& device, MM::Core& core, double& voltage);
    bool IsLampBusy(MM::Device& device, MM::Core& core);
-   int SetLampControltarget(MM::Device& device, MM::Core& core, int target);
+   int SetLampControlTarget(MM::Device& device, MM::Core& core, int target);
+   int GetLampControlTarget(MM::Device& device, MM::Core& core, int& target);
 
    int SetEpiShutterStatus(MM::Device& device, MM::Core& core, int status);
    int GetEpiShutterStatus(MM::Device& device, MM::Core& core, int& pos);

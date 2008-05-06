@@ -193,4 +193,30 @@ private:
    std::string focusState_;
 };
 
+
+class AZ100Turret : public CStateDeviceBase<AZ100Turret>
+{
+public:
+   AZ100Turret();
+   ~AZ100Turret();
+
+   //MMDevice API
+   bool Busy();
+   void GetName(char* pszName) const;
+   unsigned long GetNumberOfPositions()const {return numPos_;}
+
+   int Initialize();
+   int Shutdown();
+
+   int OnState(MM::PropertyBase* pProp, MM::ActionType eAct); 
+   int OnPort(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+private:
+   long numPos_;                                                             
+   bool busy_;                                                               
+   bool initialized_;                                                        
+   std::string port_;
+   MM::MMTime changedTime_;                                                  
+   long position_; 
+};
 #endif //_ASIStage_H_

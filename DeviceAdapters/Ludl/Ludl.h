@@ -215,6 +215,7 @@ public:
    int OnAccel(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 private:
+   bool AxisBusy(const char* axis);
    int ExecuteCommand(const std::string& cmd, std::string& response);
    
    bool initialized_;

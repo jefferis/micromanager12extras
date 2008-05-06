@@ -496,4 +496,37 @@ private:
    } ZmStatFlags;
 
 };
+
+
+class FilterWheel : public CStateDeviceBase<FilterWheel>
+{
+public:
+   FilterWheel(int wheelNr);
+   ~FilterWheel();
+
+   // MMDevice API
+   // ------------
+   int Initialize();
+   int Shutdown();
+    
+   void GetName(char* pszName) const;
+   bool Busy();
+   unsigned long GetNumberOfPositions()const {return numPos_;};
+
+   // action interface
+   // ---------------
+   int OnState(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+private:
+   int SetPosition(int position);
+   int GetPosition(int &position);
+   bool GetPresence(bool& present);
+   int wheelNr_;
+   bool initialized_;
+   std::string name_;
+   long pos_;
+   int numPos_;
+   int turretId_;
+};
+
 #endif // _ZeissCAN_H_

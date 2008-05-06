@@ -1325,20 +1325,26 @@ int XYStage::Shutdown()
    return DEVICE_OK;
 }
 
+bool XYStage::Busy()
+{
+   if (AxisBusy("X") || AxisBusy("Y"))
+      return true;
+   return false;
+}
+
 /**
  * Returns true if either of the axis (X or Y) are still moving.
  */
-bool XYStage::Busy()
+bool XYStage::AxisBusy(const char* axis)
 {
-   
-   clearPort(*this, *GetCoreCallback(), port_.c_str());
+    clearPort(*this, *GetCoreCallback(), port_.c_str());
    // format the command
-   const char* cmd = "STATUS X Y";
-
+   //const char* cmd = "STATUS X Y";
+   ostringstream cmd;
+   cmd << "STATUS " << axis;
    // send command
-   // int ret = SendSerialCommand(port_.c_str(), cmd.str().c_str(), "\r");
-   // 
-   int ret = SendSerialCommand(port_.c_str(), cmd, "\r");
+ 
+   int ret = SendSerialCommand(port_.c_str(), cmd.str().c_str(), "\r");
    if (ret != DEVICE_OK)
    {
       ostringstream os;
@@ -1352,7 +1358,7 @@ bool XYStage::Busy()
    unsigned long read=0;
    int numTries=0, maxTries=400;
    long pollIntervalMs = 5;
-   this->LogMessage("Starting read in XY-Stage Busy\n", true);
+   this->LogMessage("Starting read in XY-Stage Busy", true);
    do {
       ret = ReadFromComPort(port_.c_str(), &status, 1, read);
       if (ret != DEVICE_OK)
@@ -1926,7 +1932,7 @@ int Stage::Shutdown()
 bool Stage::Busy()
 {
    ostringstream os;
-   os << " STATUS " << id_;
+   os << "STATUS " << id_;
 
    int ret = SendSerialCommand(port_.c_str(), os.str().c_str(), "\r");
    if (ret != DEVICE_OK)

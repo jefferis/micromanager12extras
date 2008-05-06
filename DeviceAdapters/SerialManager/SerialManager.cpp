@@ -22,7 +22,7 @@
 //                
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 10/21/2005
 //
-// CVS:           $Id: SerialManager.cpp 1068 2008-03-28 16:26:42Z nico $
+// CVS:           $Id: SerialManager.cpp 1152 2008-05-01 22:41:07Z nico $
 //
 
 #ifdef WIN32
@@ -423,8 +423,11 @@ int SerialPort::GetAnswer(char* answer, unsigned bufLen, const char* term)
    }
 
    // wait a little more for the proper termination sequence
-   unsigned long startTime = GetClockTicksUs();
-   while ((GetClockTicksUs() - startTime) / 1000.0 < answerTimeoutMs_)
+   //unsigned long startTime = GetClockTicksUs();
+   //unsigned long newTime = startTime;
+   MM::MMTime startTime = GetCurrentMMTime();
+   MM::MMTime answerTimeout(answerTimeoutMs_ * 1000.0);
+   while ((GetCurrentMMTime() - startTime)  < answerTimeout)
    {
       if (bufLen <= totalRead)
       {

@@ -17,7 +17,7 @@
 //                IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
-// CVS:           $Id: NikonTE2000.cpp 897 2008-02-06 20:20:54Z nenad $
+// CVS:           $Id: NikonTE2000.cpp 1135 2008-04-28 18:35:19Z nico $
 // 
 
 #ifdef WIN32
@@ -43,6 +43,9 @@ const char* g_UniblitzShutterName = "Uniblitz-Shutter";
 const char* g_FocusName = "Focus";
 const char* g_AutoFocusName = "PerfectFocus";
 const char* g_HubName = "TE2000";
+const char* g_Control = "Control";
+const char* g_ControlMicroscope = "Microscope";
+const char* g_ControlPad = "Control Pad";
 
 using namespace std;
 
@@ -1040,6 +1043,15 @@ int Lamp::Initialize()
    if (ret != DEVICE_OK)
       return ret;
 
+   // Control (Remote Pad or Microscope)
+   // -------
+   pAct = new CPropertyAction (this, &Lamp::OnControl);
+   ret = CreateProperty(g_Control, g_ControlMicroscope, MM::String, false, pAct);
+   if (ret != DEVICE_OK)
+      return ret;
+   AddAllowedValue(g_Control, g_ControlMicroscope);
+   AddAllowedValue(g_Control, g_ControlPad);
+
    ret = UpdateStatus();
    if (ret != DEVICE_OK)
       return ret;
@@ -1092,7 +1104,7 @@ int Lamp::Fire(double /*deltaT*/)
 int Lamp::OnOnOff(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
     // make sure that we have control
-   int ret = g_hub.SetLampControltarget(*this, *GetCoreCallback(), LAMP_TARGET_PAD);   
+   int ret = g_hub.SetLampControlTarget(*this, *GetCoreCallback(), LAMP_TARGET_PAD);   
    if (ret != DEVICE_OK)
       return ret;
 
@@ -1122,7 +1134,7 @@ int Lamp::OnOnOff(MM::PropertyBase* pProp, MM::ActionType eAct)
 int Lamp::OnVoltage(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    // make sure that we have control
-   int ret = g_hub.SetLampControltarget(*this, *GetCoreCallback(), LAMP_TARGET_PAD);   
+   int ret = g_hub.SetLampControlTarget(*this, *GetCoreCallback(), LAMP_TARGET_PAD);   
    if (ret != DEVICE_OK)
       return ret;
 
@@ -1148,6 +1160,35 @@ int Lamp::OnVoltage(MM::PropertyBase* pProp, MM::ActionType eAct)
    return DEVICE_OK;
 }
 
+int Lamp::OnControl(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+
+   int ret, target;
+   if (eAct == MM::BeforeGet)
+   {
+      ret = g_hub.GetLampControlTarget(*this, *GetCoreCallback(), target);
+      if (ret != DEVICE_OK)
+         return ret;
+      if (target == LAMP_TARGET_PAD)
+         pProp->Set(g_ControlPad);
+      else
+         pProp->Set(g_ControlMicroscope);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      std::string controlTarget;
+      pProp->Get(controlTarget);
+      if (controlTarget == g_ControlPad)
+         target = LAMP_TARGET_PAD;
+      else
+         target = LAMP_TARGET_MICROSCOPE;
+      ret = g_hub.SetLampControlTarget(*this, *GetCoreCallback(), target);
+      if (ret != DEVICE_OK)
+         return ret;
+   }
+
+   return DEVICE_OK;
+}
 ///////////////////////////////////////////////////////////////////////////////
 // EpiShutter
 // ~~~~

@@ -99,6 +99,7 @@ void QCAMAPI PreviewCallback
 
 
 #ifdef __APPLE_CC__
+#include <sys/time.h>
 struct timespec* FillInTimespec (struct timespec * time, unsigned long long inNanoseconds)
 {
 	struct				timeval currSysTime;

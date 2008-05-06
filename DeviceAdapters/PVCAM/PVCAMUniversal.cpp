@@ -17,7 +17,7 @@
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 06/30/2006
 //
-// CVS:           $Id: PVCAMUniversal.cpp 1096 2008-04-08 19:47:37Z nico $
+// CVS:           $Id: PVCAMUniversal.cpp 1123 2008-04-23 00:47:00Z nico $
 
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -644,7 +644,8 @@ int Universal::Initialize()
       rs_bool bAvail;
       bool versionTest = true;
 
-      if (strcmp(param_set[i].name, "PMode") == 0  && version < 0x2770)
+      // Version cutoff is semi-arbitrary.  PI cameras with PVCAM 0x0271 need this
+      if (strcmp(param_set[i].name, "PMode") == 0  && version < 0x0275)
          versionTest= false;
 
 	   bool getLongSuccess = GetLongParam_PvCam(hPVCAM_, param_set[i].id, &ldata);

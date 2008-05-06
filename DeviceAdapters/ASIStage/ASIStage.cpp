@@ -46,6 +46,7 @@ using namespace std;
 const char* g_XYStageDeviceName = "XYStage";
 const char* g_ZStageDeviceName = "ZStage";
 const char* g_CRIFDeviceName = "CRIF";
+const char* g_AZ100TurretName = "AZ100 Turret";
 
 // CRIF states
 const char* g_CRIFState = "CRIF State";
@@ -69,6 +70,7 @@ MODULE_API void InitializeModuleData()
    AddAvailableDeviceName(g_ZStageDeviceName, "Add-on Z-stage");
    AddAvailableDeviceName(g_XYStageDeviceName, "XY Stage");
    AddAvailableDeviceName(g_CRIFDeviceName, "CRIF");
+   AddAvailableDeviceName(g_AZ100TurretName, "AZ100 Turret");
 }
 
 MODULE_API MM::Device* CreateDevice(const char* deviceName)
@@ -89,6 +91,10 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
    else if (strcmp(deviceName, g_CRIFDeviceName) == 0)
    {
       return  new CRIF();
+   }
+   else if (strcmp(deviceName, g_AZ100TurretName) == 0)
+   {
+      return  new AZ100Turret();
    }
 
    return 0;
@@ -2047,3 +2053,168 @@ int CRIF::OnFocus(MM::PropertyBase* pProp, MM::ActionType eAct)
 
    return DEVICE_OK;
 }
+
+
+AZ100Turret::AZ100Turret() :
+   numPos_(4),
+   initialized_(false),
+   port_("Undefined"),
+   position_ (0)
+{
+   InitializeDefaultErrorMessages();
+
+   // create pre-initialization properties
+   // ------------------------------------
+
+   // Name
+   CreateProperty(MM::g_Keyword_Name, g_AZ100TurretName, MM::String, true);
+
+   // Description
+   CreateProperty(MM::g_Keyword_Description, "ASI AZ100 Turret Controller", MM::String, true);
+
+   // Port
+   CPropertyAction* pAct = new CPropertyAction (this, &AZ100Turret::OnPort);
+   CreateProperty(MM::g_Keyword_Port, "Undefined", MM::String, false, pAct, true);
+ 
+}
+
+AZ100Turret::~AZ100Turret()
+{
+   Shutdown();
+}
+
+void AZ100Turret::GetName(char* Name) const
+{
+   CDeviceUtils::CopyLimitedString(Name, g_AZ100TurretName);
+}
+
+int AZ100Turret::Initialize()
+{
+   // state
+   CPropertyAction* pAct = new CPropertyAction (this, &AZ100Turret::OnState);
+   int ret = CreateProperty(MM::g_Keyword_State, "0", MM::Integer, false, pAct);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   AddAllowedValue(MM::g_Keyword_State, "0");
+   AddAllowedValue(MM::g_Keyword_State, "1");
+   AddAllowedValue(MM::g_Keyword_State, "2");
+   AddAllowedValue(MM::g_Keyword_State, "3");
+
+   // Label
+   // -----
+   pAct = new CPropertyAction (this, &CStateBase::OnLabel);
+   ret = CreateProperty(MM::g_Keyword_Label, "", MM::String, false, pAct);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   SetPositionLabel(0, "Position-1");
+   SetPositionLabel(1, "Position-2");
+   SetPositionLabel(2, "Position-3");
+   SetPositionLabel(3, "Position-4");
+
+   ret = UpdateStatus();
+   if (ret != DEVICE_OK)
+      return ret;
+
+   initialized_ = true;
+   return DEVICE_OK;
+}
+
+int AZ100Turret::Shutdown()
+{
+   if (initialized_)
+   {
+      initialized_ = false;
+   }
+   return DEVICE_OK;
+}
+
+bool AZ100Turret::Busy()
+{
+   // empty the Rx serial buffer before sending command
+   ClearPort(*this, *GetCoreCallback(), port_.c_str()); 
+
+   const char* command = "RS F";
+   // send command
+   int ret = SendSerialCommand(port_.c_str(), command, "\r");
+   if (ret != DEVICE_OK)
+      return false;
+
+   // block/wait for acknowledge, or until we time out;
+   string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r\n", answer);
+   if (ret != DEVICE_OK)
+      return false;
+
+   if (answer.length() >= 1)
+   {
+      int status = atoi(answer.substr(2).c_str());
+      if (status & 1)
+         return true;
+	   return false;
+   }
+   return false;
+}
+
+int AZ100Turret::OnPort(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      pProp->Set(port_.c_str());
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      if (initialized_)
+      {
+         // revert
+         pProp->Set(port_.c_str());
+         return ERR_PORT_CHANGE_FORBIDDEN;
+      }
+
+      pProp->Get(port_);
+   }
+
+   return DEVICE_OK;
+}
+
+int AZ100Turret::OnState(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      pProp->Set(position_);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      long position;
+      pProp->Get(position);
+
+      ostringstream os;
+      os << "MTUR X=" << position + 1;
+
+      // send command
+      int ret = SendSerialCommand(port_.c_str(), os.str().c_str(), "\r");
+      if (ret != DEVICE_OK)
+         return ret;
+
+      string answer;
+      ret = GetSerialAnswer(port_.c_str(), "\r\n", answer);
+      if (ret != DEVICE_OK)
+      return DEVICE_OK;
+
+      if (answer.substr(0, 2).compare(":N") == 0 && answer.length() > 2)
+      {
+         int errNo = atoi(answer.substr(2,4).c_str());
+         return ERR_OFFSET + errNo;
+      }
+
+      if (answer.substr(0,2) == ":A") {
+         position_ = position;
+      }
+      else
+         return ERR_UNRECOGNIZED_ANSWER;
+   }
+
+   return DEVICE_OK;
+}
+

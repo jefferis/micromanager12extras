@@ -23,7 +23,7 @@
 //                
 // AUTHOR:        Nenad Amodaj, 10/21/2005, Nico Stuurman, Dec. 2005
 //
-// CVS:           $Id: SerialManager.cpp 1024 2008-03-08 16:50:13Z nico $
+// CVS:           $Id: SerialManager.cpp 1130 2008-04-24 17:05:00Z nico $
 //
 
 #ifndef _std_iostream_INCLUDED_
@@ -279,7 +279,7 @@ MDSerialPort::MDSerialPort(std::string portName) :
 
    // transmission Delay                                                     
    pAct = new CPropertyAction (this, &MDSerialPort::OnTransmissionDelay);
-   ret = CreateProperty("DelayBetweenCharsMs", "1", MM::Float, false, pAct, true);
+   ret = CreateProperty("DelayBetweenCharsMs", "0", MM::Float, false, pAct, true);
    assert(ret == DEVICE_OK);                                                 
 
    ret = UpdateStatus();
@@ -426,6 +426,7 @@ int MDSerialPort::GetAnswer(char* answer, unsigned bufLen, const char* term)
    catch ( SerialPort::ReadTimeout ) {
       logMsg << "Timeout on read from Serial port " << portName_ << "..."; 
       this->LogMessage(logMsg.str().c_str(), true);
+      return DEVICE_SERIAL_TIMEOUT;
    }
    logMsg << " From port: " << portName_ << "." << "Read: " << result;
    this->LogMessage(logMsg.str().c_str(), true);
