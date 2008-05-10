@@ -597,6 +597,9 @@ int Cdc1394::Initialize()
              sprintf(tmp,"%d",brightness);
              nRet = CreateProperty("Brightness", tmp, MM::Integer, false, pAct);
              assert(nRet == DEVICE_OK);
+             nRet = SetPropertyLimits("Brightness", brightnessMin, brightnessMax);
+             assert(nRet == DEVICE_OK);
+             
           } 
           else if (strcmp(featureLabel, "Gain") == 0) 
           {
@@ -616,6 +619,9 @@ int Cdc1394::Initialize()
              sprintf(tmp,"%d",gain);
              nRet = CreateProperty(MM::g_Keyword_Gain, tmp, MM::Integer, false, pAct);
              assert(nRet == DEVICE_OK);
+             nRet = SetPropertyLimits(MM::g_Keyword_Gain, gainMin, gainMax);
+             assert(nRet == DEVICE_OK);
+             
           }
           else if (strcmp(featureLabel, "Shutter") == 0) 
           {
@@ -635,6 +641,8 @@ int Cdc1394::Initialize()
              pAct = new CPropertyAction (this, &Cdc1394::OnShutter);
              sprintf(tmp,"%d",shutter);
              nRet = CreateProperty("Shutter", tmp, MM::Integer, false, pAct);
+             assert(nRet == DEVICE_OK);
+             nRet = SetPropertyLimits("Shutter", shutterMin, shutterMax);
              assert(nRet == DEVICE_OK);
           }
           else if (strcmp(featureLabel, "Exposure") == 0) 
