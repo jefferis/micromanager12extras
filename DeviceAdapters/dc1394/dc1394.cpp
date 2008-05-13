@@ -1427,3 +1427,177 @@ void Cdc1394::setFrameRateMap()
    frameRateMap.insert (frameRateMapType(DC1394_FRAMERATE_120, "120 fps"));
    frameRateMap.insert (frameRateMapType(DC1394_FRAMERATE_240, "240 fps"));
 }
+
+/**
+ * Starts continuous acquisition.
+ */
+int Cdc1394::StartSequenceAcquisition(long numImages, double interval_ms)
+{
+   
+   // If we're using the camera in some other way, stop that
+   Cdc1394::StopTransmission();
+   
+   printf("Started camera streaming.\n");
+   if (acquiring_)
+      return ERR_BUSY_ACQUIRING;
+
+   int ret = GetCoreCallback()->PrepareForAcq(this);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   logMsg_.clear();
+   logMsg_ << "Started sequnce acquisition: " << numImages << " at " << interval_ms << " ms" << endl;
+   LogMessage(logMsg_.str().c_str());
+
+   imageCounter_ = 0;
+   sequenceLength_ = numImages;
+   //const ACE_Time_Value curr_tv = ACE_OS::gettimeofday ();
+   //ACE_Time_Value interval = ACE_Time_Value (0, (long)(interval_ms * 1000.0));
+   //acqTimer_->schedule (tcb_, &timerArg_, curr_tv + ACE_Time_Value (0, 1000), interval);
+
+   double actualIntervalMs = max(GetExposure(), interval_ms);
+   acqThread_->SetInterval(actualIntervalMs);
+   SetProperty(MM::g_Keyword_ActualInterval_ms, CDeviceUtils::ConvertToString(actualIntervalMs));
+   acqThread_->SetLength(numImages);
+   acquiring_ = true;
+   err = dc1394_video_set_multi_shot(camera, numImages, DC1394_ON);
+   if (err != DC1394_SUCCESS) {
+      logMsg_.clear();
+      logMsg_ << "Unable to start multi-shot" << endl;
+      LogMessage(logMsg_.str().c_str());
+      return err;
+   }
+
+   acqThread_->SetLength(numImages);
+
+   // TODO: check trigger mode, etc..
+
+   acqThread_->Start();
+
+   acquiring_ = true;
+
+   LogMessage("Acquisition thread started");
+
+   return DEVICE_OK;
+}
+
+/**
+ * Stops acquisition
+ */
+int Cdc1394::StopSequenceAcquisition()
+{   
+   printf("Stopped camera streaming.\n");
+   acqThread_->Stop();
+   acquiring_ = false;
+   err = dc1394_video_set_multi_shot(camera, 0, DC1394_OFF);
+   if (err != DC1394_SUCCESS) {
+      logMsg_.clear();
+      logMsg_ << "Unable to stop multi-shot" << endl;
+      LogMessage(logMsg_.str().c_str());
+      return err;
+   }
+   // TODO: the correct termination code needs to be passed here instead of "0"
+   MM::Core* cb = GetCoreCallback();
+   if (cb)
+      cb->AcqFinished(this, 0);
+   return DEVICE_OK;
+}
+
+int Cdc1394::PushImage()
+{
+   //printf("Pushing image %d\n", imageCounter_);
+   imageCounter_++;
+   // TODO: call core to finish image snap
+
+   if (imageCounter_ >= sequenceLength_)
+      StopSequenceAcquisition();
+   
+   // Fetch current frame
+   void* src = (void *) frame->image;
+   uint8_t* pixBuffer = const_cast<unsigned char*> (img_.GetPixels());
+	 // GJ: Deinterlace image if required
+   if (avtInterlaced) avtDeinterlaceMono8 (pixBuffer, (uint8_t*) src, width, height);			 
+	else memcpy (pixBuffer, src, GetImageBufferSize());
+   dc1394_capture_enqueue(camera, frame);
+   // Copy to img_ ?
+   
+   // process image
+   MM::ImageProcessor* ip = GetCoreCallback()->GetImageProcessor(this);
+   if (ip)
+   {
+      // GJ no color for now
+      // if (color_)
+      // {
+      //    for (int i=0; i<3; i++)
+      //    {
+      //       int ret = ip->Process(const_cast<unsigned char*>(img_[i].GetPixels()), GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel());
+      //       if (ret != DEVICE_OK)
+      //          return ret;
+      //    }
+      // }
+      // else
+      {
+         int ret = ip->Process(const_cast<unsigned char*>(img_.GetPixels()), GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel());
+         if (ret != DEVICE_OK)
+            return ret;
+      }
+   }
+
+   // insert image into the circular buffer
+   GetImageBuffer(); // this effectively copies images to rawBuffer_
+   int ret = GetCoreCallback()->InsertImage(this, (unsigned char*) img_,
+                                           GetImageWidth(),   
+                                           GetImageHeight(),
+                                           GetImageBytesPerPixel());
+   // return GetCoreCallback()->InsertMultiChannel(this, rawBuffer_, color_ ? 4 : 1, GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel());
+}
+
+int AcqSequenceThread::svc(void)
+{
+   long imageCounter(0);
+   dc1394error_t err;                                                         
+   dc1394video_frame_t *myframe=camera_->frame;  
+   
+   do
+   {
+       // wait until the frame becomes available
+      err=dc1394_capture_dequeue(camera_->camera, DC1394_CAPTURE_POLICY_WAIT, &myframe);/* Capture */
+      camera_->frame=myframe;
+      if(err!=DC1394_SUCCESS){
+         StopSequenceAcquisition();
+         return err; 
+      }       
+      int ret = camera_->PushImage();
+      if (ret != DEVICE_OK)
+      {
+         logMsg_.clear();
+         logMsg_ << "SPushImage() failed with errorcode: " << ret;
+         LogMessage(logMsg_.str().c_str());
+         camera_->StopSequenceAcquisition();
+         return 2;
+      }
+      err=dc1394_capture_enqueue(camera_->camera,myframe);/* Capture */
+      if(err!=DC1394_SUCCESS){
+         camera_->StopSequenceAcquisition();
+         return err; 
+      } 
+      //printf("Acquired frame %ld.\n", imageCounter);                         
+      imageCounter++;
+   } while (!stop_ && imageCounter < numImages_);
+
+   if (stop_)
+   {
+      printf("Acquisition interrupted by the user\n");
+      return 0;
+   }
+
+   camera_->StopSequenceAcquisition();
+   printf("Acquisition completed.\n");
+   return 0;
+}
+
+// void AcqSequenceThread::Start()
+// {
+//    stop_ = false;
+//    activate();
+// }
