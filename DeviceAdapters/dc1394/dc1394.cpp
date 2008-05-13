@@ -1503,7 +1503,7 @@ int Cdc1394::StopSequenceAcquisition()
    return DEVICE_OK;
 }
 
-int Cdc1394::PushImage()
+int Cdc1394::PushImage(dc1394video_frame_t *myframe)
 {
    //printf("Pushing image %d\n", imageCounter_);
    imageCounter_++;
@@ -1513,16 +1513,18 @@ int Cdc1394::PushImage()
       StopSequenceAcquisition();
    
    // Fetch current frame
-   void* src = (void *) frame->image;
-   uint8_t* pixBuffer = const_cast<unsigned char*> (img_.GetPixels());
-	 // GJ: Deinterlace image if required
-   if (avtInterlaced) avtDeinterlaceMono8 (pixBuffer, (uint8_t*) src, width, height);			 
-	else memcpy (pixBuffer, src, GetImageBufferSize());
-   dc1394_capture_enqueue(camera, frame);
+   // TODO: write a deinterlace in place routine
+   // to avoid unnecessary copying
+   //    uint8_t* pixBuffer = const_cast<unsigned char*> (img_.GetPixels());
+   //  // GJ: Deinterlace image if required
+   //    if (avtInterlaced) avtDeinterlaceMono8 (pixBuffer, (uint8_t*) src, width, height);         
+   // else memcpy (pixBuffer, src, GetImageBufferSize());
+
    // Copy to img_ ?
    
    // process image
    MM::ImageProcessor* ip = GetCoreCallback()->GetImageProcessor(this);
+   GetBytesPerPixel();
    if (ip)
    {
       // GJ no color for now
@@ -1537,18 +1539,17 @@ int Cdc1394::PushImage()
       // }
       // else
       {
-         int ret = ip->Process(const_cast<unsigned char*>(img_.GetPixels()), GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel());
+         int ret = ip->Process(myframe->image, width, height,bytesPerPixel);
          if (ret != DEVICE_OK)
             return ret;
       }
    }
 
-   // insert image into the circular buffer
-   GetImageBuffer(); // this effectively copies images to rawBuffer_
-   int ret = GetCoreCallback()->InsertImage(this, (unsigned char*) img_,
-                                           GetImageWidth(),   
-                                           GetImageHeight(),
-                                           GetImageBytesPerPixel());
+   // insert image into the circular MMCore buffer
+   int ret = GetCoreCallback()->InsertImage(this, myframe->image,
+                                           width,   
+                                           height,
+                                           bytesPerPixel);
    // return GetCoreCallback()->InsertMultiChannel(this, rawBuffer_, color_ ? 4 : 1, GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel());
 }
 
@@ -1556,23 +1557,22 @@ int AcqSequenceThread::svc(void)
 {
    long imageCounter(0);
    dc1394error_t err;                                                         
-   dc1394video_frame_t *myframe=camera_->frame;  
+   dc1394video_frame_t *myframe;  
    
    do
    {
        // wait until the frame becomes available
       err=dc1394_capture_dequeue(camera_->camera, DC1394_CAPTURE_POLICY_WAIT, &myframe);/* Capture */
-      camera_->frame=myframe;
       if(err!=DC1394_SUCCESS){
-         StopSequenceAcquisition();
+         camera_->StopSequenceAcquisition();
          return err; 
       }       
-      int ret = camera_->PushImage();
+      int ret = camera_->PushImage(myframe);
       if (ret != DEVICE_OK)
       {
-         logMsg_.clear();
+         std::ostringstream logMsg_;
          logMsg_ << "SPushImage() failed with errorcode: " << ret;
-         LogMessage(logMsg_.str().c_str());
+         camera_->LogMessage(logMsg_.str().c_str());
          camera_->StopSequenceAcquisition();
          return 2;
       }

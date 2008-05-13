@@ -64,6 +64,9 @@ class AcqSequenceThread;
 //
 class Cdc1394 : public CCameraBase<Cdc1394>
 {
+   
+friend class AcqSequenceThread;
+   
 public:
    static Cdc1394* GetInstance();
    ~Cdc1394();
@@ -108,7 +111,7 @@ public:
    // high-speed interface
    int StartSequenceAcquisition(long numImages, double interval_ms);
    int StopSequenceAcquisition();
-   int PushImage();
+   int PushImage(dc1394video_frame_t *myframe);
 
 private:
    Cdc1394();
