@@ -26,6 +26,7 @@
 
 #include "LabJack.h"
 #include "../../MMDevice/ModuleInterface.h"
+#include "u3.h"
 
 const char* g_DeviceNameLJSwitch = "LJ-Switch";
 const char* g_DeviceNameLJShutter = "LJ-Shutter";
@@ -61,7 +62,6 @@ using namespace std;
    }
 #endif
 
-#include "u3.h"
 
 HANDLE hDevice;
 u3CalibrationInfo caliInfo;
