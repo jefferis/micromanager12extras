@@ -11,15 +11,16 @@
 //-fixed bug in eAIN for posistive channel 30 - temp sensor (04/25/2008)
 #ifndef _U3_H
 #define _U3_H
-#ifdef __cplusplus
-extern "C" {
-#endif
- 
 #include <sys/time.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <labjackusb.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+ 
 
 
 typedef unsigned char uint8;
