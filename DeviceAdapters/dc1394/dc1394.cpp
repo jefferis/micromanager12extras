@@ -309,7 +309,7 @@ int Cdc1394::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
          // this expects a float in seconds
          float minAbsShutter, maxAbsShutter;
          err = dc1394_feature_get_absolute_boundaries(camera, DC1394_FEATURE_SHUTTER, &minAbsShutter, &maxAbsShutter);
-         float exposure_s=1000.0f*(float)exposure_ms;
+         float exposure_s=0.001f*(float)exposure_ms;
          if(minAbsShutter>exposure_s || exposure_s>maxAbsShutter) return DEVICE_ERR;
          
          err=dc1394_feature_set_absolute_value(camera,DC1394_FEATURE_SHUTTER,exposure_s);
