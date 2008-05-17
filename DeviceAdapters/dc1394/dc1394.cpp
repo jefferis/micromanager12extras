@@ -289,7 +289,7 @@ int Cdc1394::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    double exposure_ms;
    uint32_t exposure_us;
-   // TODO Should we be failing silently here?
+
    if(!absoluteShutterControl) return DEVICE_OK;
    
    if (eAct == MM::AfterSet)
@@ -312,8 +312,11 @@ int Cdc1394::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
          float exposure_s=0.001f*(float)exposure_ms;
          if(minAbsShutter>exposure_s || exposure_s>maxAbsShutter) return DEVICE_ERR;
          
-         err=dc1394_feature_set_absolute_value(camera,DC1394_FEATURE_SHUTTER,exposure_s);
+         err=dc1394_feature_set_absolute_control(camera,DC1394_FEATURE_SHUTTER,DC1394_ON);
          if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+
+         err=dc1394_feature_set_absolute_value(camera,DC1394_FEATURE_SHUTTER,exposure_s);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;		 
       }
    }
    else if (eAct == MM::BeforeGet)
@@ -470,7 +473,11 @@ int Cdc1394::OnGamma(MM::PropertyBase* pProp, MM::ActionType eAct)
 // Shutter
 int Cdc1394::OnShutter(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
-  return OnFeature(pProp, eAct, shutter, shutterMin, shutterMax, DC1394_FEATURE_SHUTTER);
+   if((eAct == MM::AfterSet) && absoluteShutterControl){
+      // Need to turn off absolute mode so that we can set it using integer shutter values
+      dc1394_feature_set_absolute_control(camera, DC1394_FEATURE_SHUTTER, DC1394_OFF);
+   }
+   return OnFeature(pProp, eAct, shutter, shutterMin, shutterMax, DC1394_FEATURE_SHUTTER);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
