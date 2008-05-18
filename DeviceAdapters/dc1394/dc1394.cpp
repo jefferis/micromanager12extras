@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+   ///////////////////////////////////////////////////////////////////////////////
 // FILE:       dc1394.cpp
 // PROJECT:    MicroManage
 // SUBSYSTEM:  DeviceAdapters
@@ -143,6 +143,9 @@ Cdc1394::Cdc1394() :
    
    // GJ set these to false for now
    avtInterlaced=false;
+   
+   // Create a thread for burst mode
+   acqThread_ = new AcqSequenceThread(this); 
 }
 
 Cdc1394::~Cdc1394()
@@ -156,6 +159,9 @@ Cdc1394::~Cdc1394()
 
       // clear the instance pointer
       m_pInstance = 0;
+
+      // Clear the burst mode thread
+      delete acqThread_;
    }
 }
 
@@ -1446,7 +1452,7 @@ int Cdc1394::StartSequenceAcquisition(long numImages, double interval_ms)
       return ret;
 
    logMsg_.clear();
-   logMsg_ << "Started sequnce acquisition: " << numImages << " at " << interval_ms << " ms" << endl;
+   logMsg_ << "Started sequence acquisition: " << numImages << " at " << interval_ms << " ms" << endl;
    LogMessage(logMsg_.str().c_str());
 
    imageCounter_ = 0;
@@ -1458,8 +1464,7 @@ int Cdc1394::StartSequenceAcquisition(long numImages, double interval_ms)
    double actualIntervalMs = max(GetExposure(), interval_ms);
    acqThread_->SetInterval(actualIntervalMs);
    SetProperty(MM::g_Keyword_ActualInterval_ms, CDeviceUtils::ConvertToString(actualIntervalMs));
-   acqThread_->SetLength(numImages);
-   acquiring_ = true;
+
    err = dc1394_video_set_multi_shot(camera, numImages, DC1394_ON);
    if (err != DC1394_SUCCESS) {
       logMsg_.clear();

@@ -204,7 +204,7 @@ public:
    void SetInterval(double intervalMs) {intervalMs_ = intervalMs;}
    void SetLength(long images) {numImages_ = images;}
    void Stop() {stop_ = true;}
-   void Start();
+   void Start() {stop_ = false; activate();}
 
 private:
    Cdc1394* camera_;
