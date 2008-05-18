@@ -1510,7 +1510,10 @@ int Cdc1394::StopSequenceAcquisition()
 
 int Cdc1394::PushImage(dc1394video_frame_t *myframe)
 {
-   //printf("Pushing image %d\n", imageCounter_);
+   logMsg_.clear();
+   logMsg_ << "Pushing image " <<imageCounter_<< endl;
+   LogMessage(logMsg_.str().c_str());
+
    imageCounter_++;
    // TODO: call core to finish image snap
 
@@ -1563,30 +1566,44 @@ int AcqSequenceThread::svc(void)
    long imageCounter(0);
    dc1394error_t err;                                                         
    dc1394video_frame_t *myframe;  
+   std::ostringstream logMsg_;
    
    do
    {
        // wait until the frame becomes available
       err=dc1394_capture_dequeue(camera_->camera, DC1394_CAPTURE_POLICY_WAIT, &myframe);/* Capture */
       if(err!=DC1394_SUCCESS){
+
+         logMsg_.clear();
+         logMsg_ << "Dequeue failed with code: " << err ;
+         camera_->LogMessage(logMsg_.str().c_str());
          camera_->StopSequenceAcquisition();
          return err; 
       }       
       int ret = camera_->PushImage(myframe);
       if (ret != DEVICE_OK)
       {
-         std::ostringstream logMsg_;
-         logMsg_ << "SPushImage() failed with errorcode: " << ret;
+
+         logMsg_.clear();
+         logMsg_ << "PushImage() failed with errorcode: " << ret;
          camera_->LogMessage(logMsg_.str().c_str());
          camera_->StopSequenceAcquisition();
          return 2;
       }
       err=dc1394_capture_enqueue(camera_->camera,myframe);/* Capture */
       if(err!=DC1394_SUCCESS){
+
+         logMsg_.clear();
+         logMsg_<< "Failed to enqueue image" <<imageCounter<< endl;
+         camera_->LogMessage(logMsg_.str().c_str());
+
          camera_->StopSequenceAcquisition();
          return err; 
       } 
-      //printf("Acquired frame %ld.\n", imageCounter);                         
+      logMsg_.clear();
+      logMsg_<< "Acquired frame" <<imageCounter<< endl;
+      camera_->LogMessage(logMsg_.str().c_str());
+      //printf("Acquired frame %ld.\n", imageCounter);                           
       imageCounter++;
    } while (!stop_ && imageCounter < numImages_);
 
