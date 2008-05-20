@@ -1473,6 +1473,8 @@ int Cdc1394::StartSequenceAcquisition(long numImages, double interval_ms)
       return err;
    }
 
+   GetBytesPerPixel();
+
    acqThread_->SetLength(numImages);
 
    // TODO: check trigger mode, etc..
@@ -1536,11 +1538,8 @@ int Cdc1394::PushImage(dc1394video_frame_t *myframe)
    }
 
    // insert image into the circular MMCore buffer
-   int ret = GetCoreCallback()->InsertImage(this, myframe->image,
-                                           width,   
-                                           height,
-                                           bytesPerPixel);
-   // return GetCoreCallback()->InsertMultiChannel(this, rawBuffer_, color_ ? 4 : 1, GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel());
+   return GetCoreCallback()->InsertImage(this, myframe->image,
+                                           width, height, bytesPerPixel);
 }
 
 int AcqSequenceThread::svc(void)
