@@ -22,7 +22,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-//                CVS: $Id: Test_MMCore.cpp 721 2007-12-21 21:01:41Z nenad $
+//                CVS: $Id: Test_MMCore.cpp 1161 2008-05-08 21:46:29Z nico $
 
 
 #include "../MMCore/MMCore.h"
@@ -188,7 +188,7 @@ void TestDemoDevices(CMMCore& core)
 class StreamTask : public ACE_Task_Base
 {
 public:
-   StreamTask::StreamTask(CMMCore* pCore) : core_(pCore) {}
+   StreamTask(CMMCore* pCore) : core_(pCore) {}
 
    virtual int svc (void)
    {

@@ -37,7 +37,7 @@
 //
 // FUTURE DEVELOPMENT: From September 1 2007, the development of this adaptor is taken over by Andor Technology plc. Daigang Wen (d.wen@andor.com) is the main contact. Changes made by him will not be labeled.
 //
-// CVS:           $Id: Andor.cpp 1100 2008-04-10 15:27:54Z nico $
+// CVS:           $Id: Andor.cpp 1183 2008-05-19 22:45:17Z nico $
 //
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -1069,8 +1069,8 @@ int Ixon::Initialize()
    }
    assert(nRet == DEVICE_OK);
 
-   if (ret != DEVICE_OK)
-      return ret;
+   //if (ret != DEVICE_OK)
+   //   return ret;
 
    //Daigang 23-may-2007
    std::string strTempSetPoint;

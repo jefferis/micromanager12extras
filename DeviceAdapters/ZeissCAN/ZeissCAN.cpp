@@ -64,12 +64,14 @@ const char* g_ZeissLampMirror = "ZeissExcitationLampSwitcher";
 const char* g_ZeissHalogenLamp = "ZeissHalogenLamp";
 const char* g_ZeissFocusName = "Focus";
 const char* g_ZeissExternal = "External-Internal Shutter";
+const char* g_ZeissExtFilterWheel = "ZeissExternalFilterWheel";
 const char* g_ZeissFilterWheel1 = "ZeissFilterWheel1";
 const char* g_ZeissFilterWheel2 = "ZeissFilterWheel2";
 
 // List of Turret numbers (from Zeiss documentation)
 int g_ReflectorTurret = 1;
 int g_ObjectiveTurret = 2;
+int g_ExtFilterWheel = 4;
 int g_OptovarTurret = 6;
 int g_FilterWheel1 = 7;
 int g_FilterWheel2 = 8;
@@ -99,6 +101,7 @@ MODULE_API void InitializeModuleData()
    AddAvailableDeviceName(g_ZeissLampMirror,"Lamp Switcher"); 
    AddAvailableDeviceName(g_ZeissHalogenLamp,"Halogen Lamp"); 
    AddAvailableDeviceName(g_ZeissFocusName,"Z-Drive"); 
+   AddAvailableDeviceName(g_ZeissExtFilterWheel,"External FilterWheel"); 
    AddAvailableDeviceName(g_ZeissFilterWheel1,"FilterWheel 1"); 
    AddAvailableDeviceName(g_ZeissFilterWheel2,"FilterWheel 2"); 
 }
@@ -143,6 +146,8 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
       return new FilterWheel(1);
    else if (strcmp(deviceName, g_ZeissFilterWheel2) == 0)
       return new FilterWheel(2);
+   else if (strcmp(deviceName, g_ZeissExtFilterWheel) == 0)
+      return new FilterWheel(3);
 
    return 0;
 }
@@ -281,7 +286,7 @@ ZeissTurret::ZeissTurret()
    groupTwo.push_back(34);
    groupTwo.push_back(g_LampMirror);
 //   groupTwo.push_back(g_Shutter);
-   groupTwo.push_back(4);
+   groupTwo.push_back(g_ExtFilterWheel);
    bitPosition[g_ReflectorTurret] = 0;
    bitPosition[g_ObjectiveTurret] = 1;
    bitPosition[g_FilterWheel1] = 2;
@@ -293,6 +298,7 @@ ZeissTurret::ZeissTurret()
    bitPosition[g_SidePortTurret] = 1;
 //   bitPosition[g_Shutter] = 4;
    bitPosition[g_LampMirror] = 6;
+   bitPosition[g_ExtFilterWheel] = 7;
 }
 
 ZeissTurret::~ZeissTurret()
@@ -2856,12 +2862,19 @@ FilterWheel::FilterWheel(int wheelNr):
 
    wheelNr_ = wheelNr;
    
+   std::string description = "";
    if (wheelNr_ == 1) {
       name_ = g_ZeissFilterWheel1;
       turretId_ = g_FilterWheel1;
+      description = "Zeiss Filter Wheel 1";
    } else if (wheelNr_ == 2) {
       name_ = g_ZeissFilterWheel2;
       turretId_ = g_FilterWheel2;
+      description = "Zeiss Filter Wheel 2";
+   } else if (wheelNr_ == 3) {
+      name_ = g_ZeissExtFilterWheel;
+      turretId_ = g_ExtFilterWheel;
+      description = "Zeiss External Filter Wheel";
    }
 
    // TODO provide error messages
@@ -2876,7 +2889,7 @@ FilterWheel::FilterWheel(int wheelNr):
    CreateProperty(MM::g_Keyword_Name, name_.c_str(), MM::String, true);
 
    // Description
-   CreateProperty(MM::g_Keyword_Description, "Zeiss Filter Wheel", MM::String, true);
+   CreateProperty(MM::g_Keyword_Description, description.c_str(), MM::String, true);
 
    UpdateStatus();
 }

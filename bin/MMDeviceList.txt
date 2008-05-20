@@ -110,6 +110,7 @@ ZeissCAN,ZeissTubelens,Tubelens,4
 ZeissCAN,ZeissExcitationLampSwitcher,Lamp Switcher,4
 ZeissCAN,ZeissHalogenLamp,Halogen Lamp,3
 ZeissCAN,Focus,Z-Drive,5
+ZeissCAN,ZeissExternalFilterWheel,External FilterWheel,4
 ZeissCAN,ZeissFilterWheel1,FilterWheel 1,4
 ZeissCAN,ZeissFilterWheel2,FilterWheel 2,4
 ZeissCAN29,ZeissScope,Zeiss AxioObserver controlled through serial interface,8

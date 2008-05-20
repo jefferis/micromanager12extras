@@ -32,13 +32,14 @@ public class Test_AcquisitionDataCreate {
          
          // instantiate 5d image object
          AcquisitionData ad = new AcquisitionData();
-         ad.createNew("newdata", acqDir, w, h, depth);
+         ad.createNew("newdata", acqDir);
+         ad.setImagePhysicalDimensions(w, h, depth);
          
          String channels[] = new String[2];
          channels[0] = new String("DAPI");
          channels[1] = new String("FITC");
          
-         ad.resize(frames, channels.length, slices);
+         ad.setDimensions(frames, channels.length, slices);
          ad.setChannelNames(channels);
          
          for (int i=0; i<frames; i++) {

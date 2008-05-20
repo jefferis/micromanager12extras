@@ -84,7 +84,7 @@ public:
 
    bool SetImage(unsigned channel, unsigned slice, const ImgBuffer& img);
    bool GetImage(unsigned channel, unsigned slice, ImgBuffer& img) const;
-   ImgBuffer* FrameBuffer::FindImage(unsigned channel, unsigned slice) const;
+   ImgBuffer* FindImage(unsigned channel, unsigned slice) const;
    const unsigned char* GetPixels(unsigned channel, unsigned slice) const;
    bool SetPixels(unsigned channel, unsigned slice, const unsigned char* pixels);
    unsigned Width() const {return width_;}

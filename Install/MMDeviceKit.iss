@@ -1,14 +1,15 @@
 [Setup]
-OutputDir=C:\projects\micromanager1.1\Install\Output
-OutputBaseFilename=MMDeviceKit-win-22-xx
-DefaultDirName=C:/Program Files/Micro-Manager1.1/MMDeviceKit-win-22_01
-VersionInfoVersion=22
+OutputDir=C:\projects\micromanager1.2\Install\Output
+OutputBaseFilename=MMDeviceKit-win-25-00
+DefaultDirName=C:/Program Files/Micro-Manager1.2/MMDeviceKit-win-25_00
+VersionInfoVersion=25
 VersionInfoCompany=micro-manager.org
 VersionInfoCopyright=University of California San Francisco
 AppCopyright=Unviersity of California San Francisco
-AppName=Micro-Manager1.1 DeviceKit
-AppVerName=DeviceKit for API version 22
+AppName=Micro-Manager1.2 DeviceKit
+AppVerName=DeviceKit for API version 25
 ShowLanguageDialog=yes
+DisableDirPage=true
 
 [Files]
 ; driver files

@@ -16,7 +16,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: SutterLambda.cpp 1154 2008-05-05 17:40:24Z nico $
+// CVS:           $Id: SutterLambda.cpp 1156 2008-05-07 16:27:59Z nico $
 //
 
 #ifdef WIN32
@@ -871,22 +871,28 @@ bool DG4Shutter::SetShutterPosition(bool state)
    if (DEVICE_OK != WriteToComPort(port_.c_str(), &command, 1))
 	   return false;
 
-   // block/wait for acknowledge, or until we time out;
-   unsigned char answer = 0;
+      unsigned char answer = 0;
    unsigned long read;
-   long startTime = GetClockTicksUs();
-
+   MM::MMTime startTime = GetCurrentMMTime();
+   MM::MMTime now = startTime;
+   MM::MMTime timeout (answerTimeoutMs_ * 1000);
+   bool eol = false;
    bool ret = false;
    do {
       if (DEVICE_OK != ReadFromComPort(port_.c_str(), &answer, 1, read))
          return false;
-      if (answer == command)
-      {
+      if (answer == command)      {
          ret = true;
          g_DG4State = state;
       }
+      if (answer == 13)
+         eol = true;
+      now = GetCurrentMMTime();
    }
-   while(!ret && (GetClockTicksUs() - startTime) / 1000.0 < answerTimeoutMs_);
+   while(!(eol && ret) && ( (now - startTime)  < timeout) );
+
+   if (!ret)
+      LogMessage("Shutter read timed out", true);
 
    return ret;
 }
@@ -1085,16 +1091,23 @@ bool DG4Wheel::SetWheelPosition(unsigned pos)
    // block/wait for acknowledge, or until we time out;
    unsigned char answer = 0;
    unsigned long read;
-   long startTime = GetClockTicksUs();
-
+   MM::MMTime startTime = GetCurrentMMTime();
+   MM::MMTime now = startTime;
+   MM::MMTime timeout (answerTimeoutMs_ * 1000);
+   bool eol = false;
    bool ret = false;
    do {
       if (DEVICE_OK != ReadFromComPort(port_.c_str(), &answer, 1, read))
          return false;
       if (answer == command)
          ret = true;
-   }
-   while(!ret && (GetClockTicksUs() - startTime) / 1000.0 < answerTimeoutMs_);
+      if (answer == 13)
+         eol = true;
+      now = GetCurrentMMTime();
+   } while(!(eol && ret) && ( (now - startTime)  < timeout) );
+
+   if (!ret)
+      LogMessage("Wheel read timed out", true);
 
    return ret;
 }
