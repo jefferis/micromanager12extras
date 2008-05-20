@@ -1560,7 +1560,14 @@ int AcqSequenceThread::svc(void)
          camera_->LogMessage(logMsg_.str().c_str());
          camera_->StopSequenceAcquisition();
          return err; 
-      }       
+      } else {
+         logMsg_.clear();
+         logMsg_ << "Dequeued image: " << imageCounter <<
+         " with timestamp: " <<myframe->timestamp << 
+         " ring buffer pos: "<<myframe->id <<
+         " frames_behind: "<<myframe->frames_behind<<endl ;
+         camera_->LogMessage(logMsg_.str().c_str());
+      }
       int ret = camera_->PushImage(myframe);
       if (ret != DEVICE_OK)
       {
