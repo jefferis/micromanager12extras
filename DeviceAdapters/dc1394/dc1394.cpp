@@ -1517,9 +1517,6 @@ int Cdc1394::PushImage(dc1394video_frame_t *myframe)
    imageCounter_++;
    // TODO: call core to finish image snap
 
-   if (imageCounter_ >= sequenceLength_)
-      StopSequenceAcquisition();
-   
    // Fetch current frame
    // TODO: write a deinterlace in place routine
    // to avoid unnecessary copying
@@ -1532,25 +1529,10 @@ int Cdc1394::PushImage(dc1394video_frame_t *myframe)
    
    // process image
    MM::ImageProcessor* ip = GetCoreCallback()->GetImageProcessor(this);
-   GetBytesPerPixel();
    if (ip)
    {
-      // GJ no color for now
-      // if (color_)
-      // {
-      //    for (int i=0; i<3; i++)
-      //    {
-      //       int ret = ip->Process(const_cast<unsigned char*>(img_[i].GetPixels()), GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel());
-      //       if (ret != DEVICE_OK)
-      //          return ret;
-      //    }
-      // }
-      // else
-      {
-         int ret = ip->Process(myframe->image, width, height,bytesPerPixel);
-         if (ret != DEVICE_OK)
-            return ret;
-      }
+      int ret = ip->Process(myframe->image, width, height,bytesPerPixel);
+      if (ret != DEVICE_OK) return ret;
    }
 
    // insert image into the circular MMCore buffer
@@ -1572,10 +1554,10 @@ int AcqSequenceThread::svc(void)
    {
        // wait until the frame becomes available
       err=dc1394_capture_dequeue(camera_->camera, DC1394_CAPTURE_POLICY_WAIT, &myframe);/* Capture */
-      if(err!=DC1394_SUCCESS){
-
+      if(err!=DC1394_SUCCESS)
+      {
          logMsg_.clear();
-         logMsg_ << "Dequeue failed with code: " << err ;
+         logMsg_ << "Dequeue failed with code: " <<err ;
          camera_->LogMessage(logMsg_.str().c_str());
          camera_->StopSequenceAcquisition();
          return err; 
@@ -1583,7 +1565,6 @@ int AcqSequenceThread::svc(void)
       int ret = camera_->PushImage(myframe);
       if (ret != DEVICE_OK)
       {
-
          logMsg_.clear();
          logMsg_ << "PushImage() failed with errorcode: " << ret;
          camera_->LogMessage(logMsg_.str().c_str());
@@ -1591,8 +1572,8 @@ int AcqSequenceThread::svc(void)
          return 2;
       }
       err=dc1394_capture_enqueue(camera_->camera,myframe);/* Capture */
-      if(err!=DC1394_SUCCESS){
-
+      if(err!=DC1394_SUCCESS)
+      {
          logMsg_.clear();
          logMsg_<< "Failed to enqueue image" <<imageCounter<< endl;
          camera_->LogMessage(logMsg_.str().c_str());
@@ -1600,11 +1581,8 @@ int AcqSequenceThread::svc(void)
          camera_->StopSequenceAcquisition();
          return err; 
       } 
-      logMsg_.clear();
-      logMsg_<< "Acquired frame" <<imageCounter<< endl;
-      camera_->LogMessage(logMsg_.str().c_str());
-      //printf("Acquired frame %ld.\n", imageCounter);                           
       imageCounter++;
+      //printf("Acquired frame %ld.\n", imageCounter);                           
    } while (!stop_ && imageCounter < numImages_);
 
    if (stop_)
@@ -1617,9 +1595,3 @@ int AcqSequenceThread::svc(void)
    printf("Acquisition completed.\n");
    return 0;
 }
-
-// void AcqSequenceThread::Start()
-// {
-//    stop_ = false;
-//    activate();
-// }
