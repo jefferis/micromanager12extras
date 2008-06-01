@@ -34,6 +34,7 @@ const char* g_DeviceNameLJDA0 = "LJ-DAC-0";
 const char* g_DeviceNameLJDA1 = "LJ-DAC-1";
 
 const char* g_volts = "Volts";
+const char* g_channel = "Channel";
 
 // Global state of the LJ switch to enable simulation of the shutter device.
 // The virtual shutter device uses this global variable to restore state of the switch
@@ -311,10 +312,18 @@ int CLJDA::Initialize()
    if (DEVICE_OK != nRet)
       return nRet;
 
+
    // State
    // -----
    CPropertyAction* pAct = new CPropertyAction (this, &CLJDA::OnVolts);
    nRet = CreateProperty(g_volts, "0.0", MM::Float, false, pAct);
+   if (nRet != DEVICE_OK)
+      return nRet;
+
+   // Channel
+   // -----
+   pAct = new CPropertyAction (this, &CLJDA::OnChannel);
+   nRet = CreateProperty(g_channel, "0", MM::Integer, false, pAct);
    if (nRet != DEVICE_OK)
       return nRet;
 
@@ -359,7 +368,7 @@ int CLJDA::OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
       long channel;
       pProp->Get(channel);
-      if (channel >=1 && channel <=8)
+      if (channel >=0 && channel <=1)
          channel_ = channel;
    }
    return DEVICE_OK;
