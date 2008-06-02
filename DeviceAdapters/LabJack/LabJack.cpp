@@ -72,22 +72,17 @@ u3CalibrationInfo caliInfo;
  */
 int InitializeTheBoard()
 {
-   long error;
-   
    //Open first found U3 over USB
    int localID = -1;
    if( (hDevice = openUSBConnection(localID)) == NULL)
-      goto done;
+      return DEVICE_ERR;
 
    //Get calibration information from U3
-   if(getCalibrationInfo(hDevice, &caliInfo) < 0)
-      goto close;
-   close:
-      if(error > 0)
-      printf("Received an error code of %ld\n", error);
+   if(getCalibrationInfo(hDevice, &caliInfo) < 0){
       closeUSBConnection(hDevice);
-   done:
-      return DEVICE_OK;
+      return DEVICE_ERR;
+   }
+   return DEVICE_OK;
 }
 
 
@@ -256,7 +251,7 @@ int CLJSwitch::OnState(MM::PropertyBase* pProp, MM::ActionType eAct)
 // ~~~~~~~~~~~~~~~~~~~~~~
 
 CLJDA::CLJDA(unsigned channel, const char* name) :
-      busy_(false), minV_(0.0), maxV_(0.0), encoding_(0), resolution_(0), channel_(channel), name_(name)
+      busy_(false), minV_(0.0), maxV_(0.0), channel_(channel), name_(name)
 {
    InitializeDefaultErrorMessages();
 
@@ -283,21 +278,10 @@ int CLJDA::Initialize()
    int ret = InitializeTheBoard();
    if (ret != DEVICE_OK)
       return ret;
-
-   // obtain scaling info
-   // TOFIX: GJ need to get these values 
-   // ret = olDaGetRange(board.hdass_da, &maxV_, &minV_);
-   // if (ret != OLNOERROR)
-   //    return ret;
-   // 
-   // ret = olDaGetEncoding(board.hdass_da, &encoding_);
-   // if (ret != OLNOERROR)
-   //    return ret;
-   // 
-   // ret = olDaGetResolution(board.hdass_da, &resolution_);
-   // if (ret != OLNOERROR)
-   //    return ret;
-
+   
+   // Standard for LabJack
+   // TODO: Can we query these?
+   maxV_=5.0;minV_=0.0;
 
    // set property list
    // -----------------
@@ -319,6 +303,8 @@ int CLJDA::Initialize()
    nRet = CreateProperty(g_volts, "0.0", MM::Float, false, pAct);
    if (nRet != DEVICE_OK)
       return nRet;
+   nRet = SetPropertyLimits(g_volts, minV_, maxV_);
+   if (nRet != DEVICE_OK) return nRet;
 
    // Channel
    // -----
@@ -326,6 +312,10 @@ int CLJDA::Initialize()
    nRet = CreateProperty(g_channel, "0", MM::Integer, false, pAct);
    if (nRet != DEVICE_OK)
       return nRet;
+   // TODO: can we query these?
+   nRet = SetPropertyLimits(g_channel, 0, 1);
+   if (nRet != DEVICE_OK) return nRet;
+      
 
    nRet = UpdateStatus();
    if (nRet != DEVICE_OK)

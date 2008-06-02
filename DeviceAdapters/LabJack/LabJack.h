@@ -128,8 +128,6 @@ private:
    bool busy_;
    double minV_;
    double maxV_;
-   unsigned int encoding_;
-   unsigned int resolution_;
    unsigned channel_;
    std::string name_;
 };
