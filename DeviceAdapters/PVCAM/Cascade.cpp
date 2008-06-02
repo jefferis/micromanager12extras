@@ -21,7 +21,7 @@
 // NOTES:         This file is obsolete. Use PVCAMUniversal.cpp for new
 //                development., N.A. 01/17/2007
 //
-// CVS:           $Id: Cascade.cpp 1002 2008-03-02 01:51:53Z nico $
+// CVS:           $Id: Cascade.cpp 1228 2008-05-28 19:54:06Z nico $
 
 #ifdef WIN32
 #pragma warning(disable : 4996) // disable warning for deperecated CRT functions on Windows 
@@ -601,6 +601,18 @@ unsigned Cascade::GetBitDepth() const
       assert(!"unsupported bytes per pixel count");
       return 0; // should not happen
    }
+}
+
+int Cascade::GetBinning () const 
+{
+   return binSize_;
+}
+
+int Cascade::SetBinning (int binSize) 
+{
+   ostringstream os;
+   os << binSize;
+   return SetProperty(MM::g_Keyword_Binning, os.str().c_str());
 }
 
 int Cascade::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize)

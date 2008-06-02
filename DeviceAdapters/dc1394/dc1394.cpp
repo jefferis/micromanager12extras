@@ -947,6 +947,28 @@ unsigned Cdc1394::GetBitDepth() const
    }
 }
 
+int Cdc1394::GetBinning () const 
+{
+   // Not supported yet
+   return 1;
+   /*
+   char binMode[MM::MaxStrLength];
+   GetProperty(MM::g_Keyword_Binning, binMode);
+   return atoi(binMode);
+   */
+}
+
+int Cdc1394::SetBinning (int binSize) 
+{
+   // Not supported yet
+   return ERR_NOT_IMPLEMENTED;
+   /*
+   ostringstream os;
+   os << binSize;
+   return SetProperty(MM::g_Keyword_Binning, os.str().c_str());
+   */
+}
+
 // GJ nb uX,uY = top left
 int Cdc1394::SetROI(unsigned uX, unsigned uY, unsigned uXSize, unsigned uYSize)
 {

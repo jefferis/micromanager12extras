@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8.00"
-	Name="ZeissCAN29"
-	ProjectGUID="{CFD4836D-3BA0-4CFE-B986-A4B34D23CDA6}"
-	RootNamespace="ZeissCAN29"
+	Name="Pecon"
+	ProjectGUID="{24FF0DE6-E201-46C1-ACFB-E4B6B4527C84}"
+	RootNamespace="Pecon"
 	Keyword="Win32Proj"
 	>
 	<Platforms>
@@ -17,10 +17,11 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			OutputDirectory="Debug"
+			IntermediateDirectory="Debug"
 			ConfigurationType="2"
-			CharacterSet="0"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -40,17 +41,15 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				InlineFunctionExpansion="0"
-				AdditionalIncludeDirectories=""
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;MODULE_EXPORTS"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;MODULE_EXPORTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
+				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="4"
 				Detect64BitPortabilityProblems="true"
-				DebugInformationFormat="3"
-				OmitDefaultLibName="false"
+				DebugInformationFormat="4"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -63,11 +62,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="Ws2_32.lib"
-				OutputFile="$(OutDir)\mmgr_dal_ZeissCAN29.dll"
+				OutputFile="$(OutDir)/mmgr_dal_Pecon.dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories=""
 				GenerateDebugInformation="true"
+				ProgramDatabaseFile="$(OutDir)/Pecon.pdb"
 				SubSystem="2"
 				TargetMachine="1"
 			/>
@@ -99,11 +97,11 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			OutputDirectory="Release"
+			IntermediateDirectory="Release"
 			ConfigurationType="2"
-			CharacterSet="1"
-			WholeProgramOptimization="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			CharacterSet="2"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -122,9 +120,9 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories=""
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;MODULE_EXPORTS"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;MODULE_EXPORTS"
 				RuntimeLibrary="0"
+				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="4"
 				Detect64BitPortabilityProblems="true"
@@ -141,10 +139,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="Ws2_32.lib"
-				OutputFile="$(OutDir)/mmgr_dal_ZeissCAN29.dll"
+				OutputFile="$(OutDir)/mmgr_dal_Pecon.dll"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -183,7 +179,7 @@
 	<Files>
 		<Filter
 			Name="Source Files"
-			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
@@ -195,11 +191,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\MMDevice\Property.cpp"
+				RelativePath=".\Pecon.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\ZeissCAN29.cpp"
+				RelativePath="..\..\MMDevice\Property.cpp"
 				>
 			</File>
 		</Filter>
@@ -210,10 +206,6 @@
 			>
 			<File
 				RelativePath="..\..\MMDevice\DeviceBase.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\MMDevice\DeviceThreads.h"
 				>
 			</File>
 			<File
@@ -233,17 +225,17 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\MMDevice\Property.h"
+				RelativePath=".\Pecon.h"
 				>
 			</File>
 			<File
-				RelativePath=".\ZeissCAN29.h"
+				RelativePath="..\..\MMDevice\Property.h"
 				>
 			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
-			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
+			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 		</Filter>

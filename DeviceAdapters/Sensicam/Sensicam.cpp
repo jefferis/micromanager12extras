@@ -18,7 +18,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: Sensicam.cpp 153 2007-05-15 21:04:13Z nenad $
+// CVS:           $Id: Sensicam.cpp 1218 2008-05-26 20:46:07Z nico $
 //
 // Modified May 14th 2007 by Liisa Hirvonen, King's College London
 
@@ -624,6 +624,18 @@ unsigned CSensicam::GetBitDepth() const
       return 0; // should not happen
    }
 }
+
+int CSensicam::GetBinning () const
+{
+   return m_nHBin;
+}
+
+int CSensicam::SetBinning (int binSize) 
+{
+   ostringstream os;                                                         
+   os << binSize;
+   return SetProperty(MM::g_Keyword_Binning, os.str().c_str());                                                                                     
+} 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Function name   : char* CSensicam::GetImageBuffer

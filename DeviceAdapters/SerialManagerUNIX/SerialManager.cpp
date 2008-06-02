@@ -23,7 +23,7 @@
 //                
 // AUTHOR:        Nenad Amodaj, 10/21/2005, Nico Stuurman, Dec. 2005
 //
-// CVS:           $Id: SerialManager.cpp 1130 2008-04-24 17:05:00Z nico $
+// CVS:           $Id: SerialManager.cpp 1232 2008-05-28 23:11:34Z nico $
 //
 
 #ifndef _std_iostream_INCLUDED_
@@ -179,7 +179,7 @@ MDSerialPort::MDSerialPort(std::string portName) :
    initialized_(false),
    portTimeoutMs_(2000.0),
    answerTimeoutMs_(500),
-   transmitCharWaitMs_(1),
+   transmitCharWaitMs_(0.0),
    stopBits_(1),
    dataBits_(8),
    baudRate_(9600),
@@ -484,7 +484,8 @@ int MDSerialPort::Read(unsigned char* buf, unsigned long bufLen, unsigned long& 
 		   return ERR_RECEIVE_FAILED;
       }
       buf[charsRead] = readChar;
-      logMsg << readChar << " ";
+      //logMsg << readChar << " ";
+      logMsg << (unsigned int) readChar << " ";
       charsRead++;
    } while (charsRead < bufLen);
 

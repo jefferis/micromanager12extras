@@ -32,7 +32,7 @@
 //
 // FUTURE DEVELOPMENT: From September 1 2007, the development of this adaptor is taken over by Andor Technology plc. Daigang Wen (d.wen@andor.com) is the main contact. Changes made by him will not be labeled.
 //
-// CVS:           $Id: Andor.h 674 2007-12-11 00:12:37Z nenad $
+// CVS:           $Id: Andor.h 1217 2008-05-26 20:45:38Z nico $
 //
 #ifndef _ANDOR_H_
 #define _ANDOR_H_
@@ -85,6 +85,8 @@ public:
    unsigned GetImageBytesPerPixel() const {return img_.Depth();} 
    long GetImageBufferSize() const {return img_.Width() * img_.Height() * GetImageBytesPerPixel();}
    unsigned GetBitDepth() const;
+   int GetBinning() const;
+   int SetBinning(int binSize);
    double GetExposure() const;
    void SetExposure(double dExp);
    int SetROI(unsigned uX, unsigned uY, unsigned uXSize, unsigned uYSize); 

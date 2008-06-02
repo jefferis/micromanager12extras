@@ -19,7 +19,7 @@
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
 //                License text is included with the source distribution.
-// CVS:           $Id: Sensicam.h 2 2007-02-27 23:33:17Z nenad $
+// CVS:           $Id: Sensicam.h 1218 2008-05-26 20:46:07Z nico $
 //
 #ifndef _SENSICAM_H_
 #define _SENSICAM_H_
@@ -62,6 +62,8 @@ public:
    unsigned GetImageHeight() const {return img_.Height();}
    unsigned GetImageBytesPerPixel() const {return img_.Depth();} 
    unsigned GetBitDepth() const;
+   int GetBinning() const;
+   int SetBinning(int binSize);
    long GetImageBufferSize() const {return img_.Width() * img_.Height() * GetImageBytesPerPixel();}
    double GetExposure() const {return m_dExposure;}
    void SetExposure(double dExp);

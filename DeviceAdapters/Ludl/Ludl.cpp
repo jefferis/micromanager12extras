@@ -1226,6 +1226,10 @@ int Shutter::OnShutterNumber(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 /**
  * XYStage - two axis stage device.
+ * Note that this adapter uses two coordinate systems.  There is the adapters own coordinate
+ * system with the X and Y axis going the 'Micro-Manager standard' direction
+ * Then, there is the Ludl native system.  All functions using 'steps' use the Ludl system
+ * All functions using Um use the Micro-Manager coordinate system
  */
 XYStage::XYStage() :
    initialized_(false), 
@@ -1235,7 +1239,9 @@ XYStage::XYStage() :
    accel_(75),
    answerTimeoutMs_(1000), 
    idX_(1), 
-   idY_(2)
+   idY_(2),
+   originX_(0),
+   originY_(0)
 {
    InitializeDefaultErrorMessages();
 
@@ -1292,7 +1298,7 @@ int XYStage::Initialize()
    if (ret != DEVICE_OK)
       return ret;
 
-   // Initial Speed (in um/sec) (i.e. lowest speed
+   // Initial Speed (in um/sec) (i.e. lowest speed)
    // -----
    pAct = new CPropertyAction (this, &XYStage::OnStartSpeed);
    // TODO: get current speed from the controller
@@ -1309,6 +1315,10 @@ int XYStage::Initialize()
       return ret;
    
    ret = UpdateStatus();
+   if (ret != DEVICE_OK)
+      return ret;
+
+   ret = SetAdapterOrigin();
    if (ret != DEVICE_OK)
       return ret;
 
@@ -1387,10 +1397,23 @@ bool XYStage::AxisBusy(const char* axis)
  */
 int XYStage::SetPositionUm(double x, double y)
 {
-   long xSteps = (long) (x / stepSizeUm_ + 0.5);
-   long ySteps = (long) (y / stepSizeUm_ + 0.5);
+   long xSteps = (long) ((originX_ + x) / stepSizeUm_ + 0.5);
+   // note: reverse orientation of the y-axis here
+   long ySteps = (long) ((originY_ - y) / stepSizeUm_ + 0.5);
    
    return SetPositionSteps(xSteps, ySteps);
+}
+
+/**
+ * Sets relative position in um.
+ */
+int XYStage::SetRelativePositionUm(double x, double y)
+{
+   long xSteps = (long) (x / stepSizeUm_ + 0.5);
+   // reverse orientation of the y-axis
+   long ySteps = (long) (-y / stepSizeUm_ + 0.5);
+   
+   return SetRelativePositionSteps(xSteps, ySteps);
 }
 
 /**
@@ -1403,8 +1426,8 @@ int XYStage::GetPositionUm(double& x, double& y)
    if (ret != DEVICE_OK)
       return ret;
 
-   x = xSteps * stepSizeUm_;
-   y = ySteps * stepSizeUm_;
+   x = (xSteps * stepSizeUm_) + originX_;
+   y = originY_ - (ySteps * stepSizeUm_);
 
    return DEVICE_OK;
 }
@@ -1450,6 +1473,46 @@ int XYStage::SetPositionSteps(long x, long y)
 }
   
 /**
+ * Sets relative position in steps.
+ */
+int XYStage::SetRelativePositionSteps(long x, long y)
+{
+   // format the command
+   ostringstream cmd;
+   cmd << "MOVREL ";
+   cmd << "X=" << x << " ";
+   cmd << "Y=" << y ;
+
+   // TODO: what if we are busy???
+
+   int ret = SendSerialCommand(port_.c_str(), cmd.str().c_str(), "\r");
+   if (ret != DEVICE_OK)
+      return ret;
+  
+   string resp;
+   ret = GetSerialAnswer(port_.c_str(), "\n", resp);
+   if (ret != DEVICE_OK) 
+      return ret;
+   if (resp.length() < 1)
+      return ERR_NO_ANSWER;
+
+   // parse the answer and return the proper error code
+   // TODO...
+
+   istringstream is(resp);
+   string outcome;
+   is >> outcome;
+
+   if (outcome.compare(":A") == 0)
+      return DEVICE_OK; // success!
+
+   // figure out the error code
+   int code;
+   is >> code;
+   return code;
+}
+
+/**
  * Returns current position in steps.
  */
 int XYStage::GetPositionSteps(long& x, long& y)
@@ -1492,8 +1555,7 @@ int XYStage::GetPositionSteps(long& x, long& y)
 }
 
 /**
- * Defines current position as origin (0,0) coordinate.
- * TODO: implement!!!
+ * Defines current position as origin (0,0) coordinate of the controller.
  */
 int XYStage::SetOrigin()
 {
@@ -1510,6 +1572,24 @@ int XYStage::SetOrigin()
    //TODO parse the answer and return error code
    string resp;
    ret = GetSerialAnswer(port_.c_str(), "\n", resp);
+
+   return SetAdapterOrigin();
+}
+
+/**
+ * Defines current position as origin (0,0) coordinate of our coordinate system
+ * Get the current (stage-native) XY position
+ * This is going to be the origin in our coordinate system
+ * The Ludl stage X axis is the same orientation as out coordinate system, the Y axis is reversed
+ */
+int XYStage::SetAdapterOrigin()
+{
+   long xStep, yStep;
+   int ret = GetPositionSteps(xStep, yStep);
+   if (ret != DEVICE_OK)
+      return ret;
+   originX_ = xStep * stepSizeUm_;
+   originY_ = yStep * stepSizeUm_;
 
    return DEVICE_OK;
 }

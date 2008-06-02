@@ -200,7 +200,10 @@ public:
   int GetPositionUm(double& x, double& y);
   int SetPositionSteps(long x, long y);
   int GetPositionSteps(long& x, long& y);
+  int SetRelativePositionUm(double x, double y);
+  int SetRelativePositionSteps(long x, long y);
   int SetOrigin();
+  int SetAdapterOrigin();
   int Home();
   int Stop();
   int GetLimits(double& xMin, double& xMax, double& yMin, double& yMax);
@@ -225,6 +228,8 @@ private:
    double answerTimeoutMs_;
    unsigned idX_;
    unsigned idY_;
+   double originX_;
+   double originY_;
 };
 
 class Stage : public CStageBase<Stage>

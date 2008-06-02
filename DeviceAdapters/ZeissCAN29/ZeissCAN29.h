@@ -229,7 +229,7 @@ class ZeissMonitoringThread
 
    private:
       MM_THREAD_HANDLE thread_;
-      void interpretMessage(unsigned char* message, int messageLength);
+      void interpretMessage(unsigned char* message);
       MM::Device& device_;
       MM::Core& core_;
       bool stop_;
@@ -417,7 +417,7 @@ private:
 class ReflectorTurret : public Turret
 {
 public:
-   ReflectorTurret(int devId, std::string name, std::string description);
+   ReflectorTurret(ZeissUByte devId, std::string name, std::string description);
    ~ReflectorTurret();
 
    // MMDevice API
@@ -427,7 +427,7 @@ public:
 class ObjectiveTurret : public Turret
 {
 public:
-   ObjectiveTurret(int devId, std::string name, std::string description);
+   ObjectiveTurret(ZeissUByte devId, std::string name, std::string description);
    ~ObjectiveTurret();
 
    // MMDevice API
@@ -437,7 +437,7 @@ public:
 class TubeLensTurret : public Turret
 {
 public:
-   TubeLensTurret(int devId, std::string name, std::string description);
+   TubeLensTurret(ZeissUByte devId, std::string name, std::string description);
    ~TubeLensTurret();
 
    // MMDevice API
@@ -447,7 +447,7 @@ public:
 class SidePortTurret : public Turret
 {
 public:
-   SidePortTurret(int devId, std::string name, std::string description);
+   SidePortTurret(ZeissUByte devId, std::string name, std::string description);
    ~SidePortTurret();
 
    // MMDevice API
@@ -457,7 +457,7 @@ public:
 class CondenserTurret : public Turret
 {
 public:
-   CondenserTurret(int devId, std::string name, std::string description);
+   CondenserTurret(ZeissUByte devId, std::string name, std::string description);
    ~CondenserTurret();
 
    // MMDevice API

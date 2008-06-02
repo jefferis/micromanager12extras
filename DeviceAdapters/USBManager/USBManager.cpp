@@ -91,11 +91,12 @@ USBDeviceInfo g_knownDevices[] = {
    {"Velleman K8061-0", 0x10cf, 0x8061, 0x01, 0x81, 64},
    {"Ludl Mac 5000", 0x6969, 0x1235, 0x02, 0x82, 64},
    {"ASI MS-2000", 0x0b54, 0x2000, 0x02, 0x82, 64},
-   {"Spectral LMM5", 0x1bdb, 0x0300, 0x02, 0x81, 64}
+   {"Spectral LMM5", 0x1bdb, 0x0300, 0x02, 0x81, 64},
+   {"Nikon AZ100m", 0x04b0, 0x7804, 0x05, 0x84, 64}
 
 
 };
-int g_numberKnownDevices = 7;
+int g_numberKnownDevices = 9;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Exported MMDevice API
@@ -397,20 +398,32 @@ int MDUSBDevice::GetAnswer(char* answer, unsigned answerLen, const char* term)
    ostringstream logMsg;
    char* termpos;
    char* internalBuf;
+   bool termFound = false;
 
    if (answerLen < 1)
       return ERR_BUFFER_OVERRUN;
 
    internalBuf = (char*) malloc(answerLen);
    memset(internalBuf, 0, answerLen);
-   
-   int ret = Read((unsigned char *) internalBuf, answerLen, charsRead);
+   MM::MMTime startTime = GetCurrentMMTime();
+   MM::MMTime timeOut = MM::MMTime(answerTimeoutMs_ * 1000.0);
 
-   if (ret != DEVICE_OK) {
-      free(internalBuf);
-      return ret;
+   while (!termFound && ((GetCurrentMMTime() - startTime) < timeOut)) {
+      int ret = Read((unsigned char *) internalBuf, answerLen, charsRead);
+
+      if (ret != DEVICE_OK) {
+         free(internalBuf);
+         return ret;
+      }
+      termpos = strstr(internalBuf, term);
+      if (termpos != 0)
+         termFound = true;
    }
 
+   if (!termFound)
+      return ERR_RECEIVE_FAILED;
+
+   /*
    if (charsRead == 0) {
       free(internalBuf);
       return ERR_RECEIVE_FAILED;
@@ -419,6 +432,7 @@ int MDUSBDevice::GetAnswer(char* answer, unsigned answerLen, const char* term)
    termpos = strstr(internalBuf, term);
    if (termpos == 0)
       return ERR_RECEIVE_FAILED;
+   */
    *termpos = '\0';
 
    strcpy(answer, internalBuf);
@@ -485,7 +499,7 @@ int MDUSBDevice::Write(const unsigned char* buf, unsigned long bufLen)
 }
  
 /*
- * This functions does the actual readng from the USB device
+ * This functions does the actual reading from the USB device
  */
 int MDUSBDevice::Read(unsigned char* buf, unsigned long bufLen, unsigned long& charsRead)
 {

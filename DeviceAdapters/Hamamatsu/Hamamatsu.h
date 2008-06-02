@@ -23,7 +23,7 @@
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.  
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 08/24/2005, contributions by Nico Stuurman
 //
-// CVS:           $Id: Hamamatsu.h 1088 2008-04-05 04:33:10Z nico $
+// CVS:           $Id: Hamamatsu.h 1212 2008-05-23 22:06:14Z nico $
 //
 #ifndef _HAMAMATSU_H_
 #define _HAMAMATSU_H_
@@ -96,6 +96,8 @@ public:
    int SetROI(unsigned uX, unsigned uY, unsigned uXSize, unsigned uYSize); 
    int GetROI(unsigned& uX, unsigned& uY, unsigned& uXSize, unsigned& uYSize);
    int ClearROI();
+   int GetBinning() const {return lnBin_;};
+   int SetBinning(int binSize); 
 
    // high-speed interface
    int StartSequenceAcquisition(long numImages, double interval_ms);

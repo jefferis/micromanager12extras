@@ -65,7 +65,7 @@
 				AdditionalDependencies="oldaapi32.lib olmem32.lib"
 				OutputFile="$(OutDir)/mmgr_dal_DTOpenLayer.dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="C:\projects\3rdparty\DataTranslation\SDK\Lib"
+				AdditionalLibraryDirectories="..\..\..\3rdParty\DataTranslation\SDK\Lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/DTOpenLayer.pdb"
 				SubSystem="2"

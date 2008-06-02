@@ -122,6 +122,8 @@ public:
    unsigned GetImageHeight() const;
    unsigned GetImageBytesPerPixel() const;
    unsigned GetBitDepth() const;
+   int GetBinning() const;
+   int SetBinning(int binSize);
    long GetImageBufferSize() const;
    double GetExposure() const;
    void SetExposure(double exp);

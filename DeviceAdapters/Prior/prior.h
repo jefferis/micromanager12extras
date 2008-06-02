@@ -18,7 +18,7 @@
 //
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 06/01/2006
 //
-// CVS:           $Id: prior.h 932 2008-02-08 01:21:04Z nico $
+// CVS:           $Id: prior.h 1242 2008-05-30 05:29:24Z nico $
 //
 
 #ifndef _PRIOR_H_
@@ -134,8 +134,10 @@ public:
    // XYStage API
    // -----------
   int SetPositionUm(double x, double y);
+  int SetRelativePositionUm(double x, double y);
   int GetPositionUm(double& x, double& y);
   int SetPositionSteps(long x, long y);
+  int SetRelativePositionSteps(long x, long y);
   int GetPositionSteps(long& x, long& y);
   int Home();
   int Stop();

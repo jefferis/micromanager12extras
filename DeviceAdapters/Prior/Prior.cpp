@@ -18,7 +18,7 @@
 //
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 06/01/2006
 //
-// CVS:           $Id: Prior.cpp 932 2008-02-08 01:21:04Z nico $
+// CVS:           $Id: Prior.cpp 1242 2008-05-30 05:29:24Z nico $
 //
 
 #ifdef WIN32
@@ -832,6 +832,14 @@ int XYStage::SetPositionUm(double x, double y)
    return SetPositionSteps(xSteps, ySteps);
 }
 
+int XYStage::SetRelativePositionUm(double x, double y)
+{
+   long xSteps = (long) (x / stepSizeXUm_ + 0.5);
+   long ySteps = (long) (y / stepSizeYUm_ + 0.5);
+   
+   return SetRelativePositionSteps(xSteps, ySteps);
+}
+
 int XYStage::GetPositionUm(double& x, double& y)
 {
    long xSteps, ySteps;
@@ -879,6 +887,40 @@ int XYStage::SetPositionSteps(long x, long y)
    return ERR_UNRECOGNIZED_ANSWER;   
 }
  
+int XYStage::SetRelativePositionSteps(long x, long y)
+{
+   // First Clear serial port from previous stuff
+   int ret = ClearPort(*this, *GetCoreCallback(), port_);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   ostringstream command;
+   command << "GR," << x << "," << y;
+
+   // send command
+   ret = SendSerialCommand(port_.c_str(), command.str().c_str(), "\r");
+   if (ret != DEVICE_OK)
+      return ret;
+
+   // block/wait for acknowledge, or until we time out;
+   string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", answer);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   if (answer.substr(0,1).compare("R") == 0)
+   {
+      return DEVICE_OK;
+   }
+   else if (answer.substr(0, 1).compare("E") == 0 && answer.length() > 2)
+   {
+      int errNo = atoi(answer.substr(2).c_str());
+      return ERR_OFFSET + errNo;
+   }
+
+   return ERR_UNRECOGNIZED_ANSWER;   
+}
+
 int XYStage::GetPositionSteps(long& x, long& y)
 {
    int ret = GetPositionStepsSingle('X', x);

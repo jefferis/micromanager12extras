@@ -24,7 +24,7 @@
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 08/24/2005, contributions by Nico Stuurman
 // NOTES:    
 //
-// CVS:           $Id: Hamamatsu.cpp 1088 2008-04-05 04:33:10Z nico $
+// CVS:           $Id: Hamamatsu.cpp 1212 2008-05-23 22:06:14Z nico $
 //
 #ifdef WIN32
    #define WIN32_LEAN_AND_MEAN
@@ -1251,6 +1251,13 @@ int CHamamatsu::ClearROI()
       return ret;
 
    return DEVICE_OK;
+}
+
+int CHamamatsu::SetBinning(int binSize)
+{
+   ostringstream os;
+   os << binSize;
+   return SetProperty (MM::g_Keyword_Binning, os.str().c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////

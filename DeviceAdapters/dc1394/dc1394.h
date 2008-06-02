@@ -49,6 +49,7 @@
 #define ERR_GET_F7_COLOR_CODING_FAILED 125
 #define ERR_SET_F7_COLOR_CODING_FAILED 126
 #define ERR_GET_F7_MAX_IMAGE_SIZE_FAILED 127
+#define ERR_NOT_IMPLEMENTED 128
 
 //////////////////////////////////////////////////////////////////////////////
 // Implementation of the MMDevice and MMCamera interfaces
@@ -73,6 +74,8 @@ public:
    unsigned GetImageBytesPerPixel() const {return img_.Depth();} 
    long GetImageBufferSize() const {return img_.Width() * img_.Height() * GetImageBytesPerPixel();}
    unsigned GetBitDepth() const;
+   int GetBinning() const;
+   int SetBinning(int binSize);
    double GetExposure() const;
    void SetExposure(double dExp);
    int SetROI(unsigned uX, unsigned uY, unsigned uXSize, unsigned uYSize); 

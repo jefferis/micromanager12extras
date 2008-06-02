@@ -619,7 +619,9 @@ int DemoStreamingCamera::SetBinning(int binFactor)
  */
 int DemoStreamingCamera::StartSequenceAcquisition(long numImages, double interval_ms)
 {
-   printf("Started camera streaming.\n");
+   ostringstream os;
+   os << "Started camera streaming with an interval of " << interval_ms << " ms\n";
+   printf("%s", os.str().c_str());
    if (acquiring_)
       return ERR_BUSY_ACQIRING;
 

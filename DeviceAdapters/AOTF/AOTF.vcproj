@@ -64,7 +64,7 @@
 				AdditionalDependencies="inpout32.lib"
 				OutputFile="$(OutDir)/mmgr_dal_AOTF.dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="C:\projects\3rdparty\inpout32\lib"
+				AdditionalLibraryDirectories="..\..\..\3rdParty\\inpout32\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/AOTF.pdb"
 				SubSystem="2"

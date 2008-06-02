@@ -37,7 +37,7 @@
 //
 // FUTURE DEVELOPMENT: From September 1 2007, the development of this adaptor is taken over by Andor Technology plc. Daigang Wen (d.wen@andor.com) is the main contact. Changes made by him will not be labeled.
 //
-// CVS:           $Id: Andor.cpp 1183 2008-05-19 22:45:17Z nico $
+// CVS:           $Id: Andor.cpp 1223 2008-05-27 19:34:23Z nico $
 //
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -1575,6 +1575,18 @@ unsigned Ixon::GetBitDepth() const
    return depth;
 }
 
+int Ixon::GetBinning () const
+{
+   return binSize_;
+}
+
+int Ixon::SetBinning (int binSize) 
+{
+   ostringstream os;                                                         
+   os << binSize;
+   return SetProperty(MM::g_Keyword_Binning, os.str().c_str());                                                                                     
+} 
+
 int Ixon::GetROI(unsigned& uX, unsigned& uY, unsigned& uXSize, unsigned& uYSize)
 {
    uX = roi_.x / binSize_;
@@ -2598,8 +2610,10 @@ int AcqSequenceThread::svc(void)
    unsigned ret;
    long waitTime;
 
+   
    DWORD timePrev = GetTickCount();
    ret = GetAcquisitionProgress(&acc, &seriesInit);
+
    if (ret != DRV_SUCCESS)
    {
       camera_->StopSequenceAcquisition();
@@ -2611,7 +2625,6 @@ int AcqSequenceThread::svc(void)
    float ActualInterval_ms = fKineticTime * 1000.0f;
 
    waitTime = (long) (ActualInterval_ms / 5);
-
    // wait for frames to start coming in
    do
    {
@@ -2623,7 +2636,6 @@ int AcqSequenceThread::svc(void)
          return ret;
       }
    } while (series == seriesInit);
-
    long seriesPrev = 0;
    long frmcnt = 0;
    do
@@ -2667,17 +2679,19 @@ int AcqSequenceThread::svc(void)
       printf("Acquisition interrupted by the user!\n");
       return 0;
    }
-
+  
    if ((series-seriesInit) == numImages_)
    {
       printf("Done!\n");
       camera_->StopSequenceAcquisition();
       return 0;
    }
-
+   
+   printf("series: %ld, serieInit: %ld, numImages: %ld\n", series, seriesInit, numImages_);
    camera_->StopSequenceAcquisition();
-   return 3; // should never get here
+   return 3; // we can get here if we are not fast enough.  Report?  
 }
+
 /**
  * Starts continuous acquisition.
  */
@@ -2838,7 +2852,7 @@ int Ixon::StopSequenceAcquisition()
 int Ixon::PushImage()
 {
    // get the top most image from the driver
-   unsigned ret = GetMostRecentImage16((WORD*)fullFrameBuffer_, roi_.xSize/binSize_ * roi_.ySize/binSize_);
+   unsigned ret = GetNewData16((WORD*)fullFrameBuffer_, roi_.xSize/binSize_ * roi_.ySize/binSize_);
    if (ret != DRV_SUCCESS)
       return (int)ret;
 

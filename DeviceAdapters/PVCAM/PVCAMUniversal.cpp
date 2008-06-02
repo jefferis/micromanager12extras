@@ -17,7 +17,7 @@
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 06/30/2006
 //
-// CVS:           $Id: PVCAMUniversal.cpp 1123 2008-04-23 00:47:00Z nico $
+// CVS:           $Id: PVCAMUniversal.cpp 1216 2008-05-26 20:32:41Z nico $
 
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -143,6 +143,18 @@ Universal::~Universal()
       delete seqThread_;
       delete[] circBuffer_;
    }
+}
+
+int Universal::GetBinning () const 
+{
+   return binSize_;
+}
+
+int Universal::SetBinning (int binSize) 
+{
+   ostringstream os;
+   os << binSize;
+   return SetProperty(MM::g_Keyword_Binning, os.str().c_str());
 }
 
 

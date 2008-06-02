@@ -23,7 +23,7 @@
 //                extensions use Universal class. N.A. 01/17/2007
 //                Micromax compatible adapter is moved to PVCAMPI project, N.A. 10/2007
 //
-// CVS:           $Id: PVCAM.h 1093 2008-04-07 22:11:46Z nico $
+// CVS:           $Id: PVCAM.h 1216 2008-05-26 20:32:41Z nico $
 
 #ifndef _PVCAM_H_
 #define _PVCAM_H_
@@ -119,6 +119,8 @@ public:
    unsigned GetImageBytesPerPixel() const {return img_.Depth();} 
    long GetImageBufferSize() const {return img_.Width() * img_.Height() * GetImageBytesPerPixel();}
    unsigned GetBitDepth() const;
+   int GetBinning() const;
+   int SetBinning(int binSize);
    double GetExposure() const;
    void SetExposure(double dExp);
    int SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize); 
@@ -196,6 +198,8 @@ public:
    unsigned GetImageBytesPerPixel() const {return img_.Depth();} 
    long GetImageBufferSize() const {return img_.Width() * img_.Height() * GetImageBytesPerPixel();}
    unsigned GetBitDepth() const;
+   int GetBinning() const;
+   int SetBinning(int binSize);
    double GetExposure() const;
    void SetExposure(double dExp);
    int SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize); 

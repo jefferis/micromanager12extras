@@ -1714,6 +1714,20 @@ int QICamera::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
    return DEVICE_OK; 
 }
 
+int QICamera::GetBinning () const 
+{
+   char binMode[MM::MaxStrLength];
+   GetProperty(MM::g_Keyword_Binning, binMode);
+   return atoi(binMode);
+}
+
+int QICamera::SetBinning (int binSize) 
+{
+   ostringstream os;
+   os << binSize;
+   return SetProperty(MM::g_Keyword_Binning, os.str().c_str());
+}
+
 
 int QICamera::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 {

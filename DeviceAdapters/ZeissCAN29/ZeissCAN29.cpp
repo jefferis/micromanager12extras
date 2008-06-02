@@ -288,8 +288,12 @@ int ZeissHub::Initialize(MM::Device& device, MM::Core& core)
    ClearPort(device, core);
 
    int ret = GetVersion(device, core);
-   if (ret != DEVICE_OK)
-      return ret;
+   if (ret != DEVICE_OK) {
+      // Sometimes we time out on the first try....  Try once more...
+      ret = GetVersion(device, core);
+      if (ret != DEVICE_OK)
+         return ret;
+   }
 
    availableDevices_.clear();
    ret = FindDevices(device, core);
@@ -565,7 +569,7 @@ int ZeissHub::GetDeviceScalings(MM::Device& device, MM::Core& core, ZeissUByte g
       if (ret != DEVICE_OK)
          return ret;
       if ( (response[0]>3) && (response[0]==responseLength-5)) {
-         vector<char> tmp(response[0]-4);
+         vector<char> tmp(response[0]-2);
          memcpy(&(tmp[0]), response + 6, response[0]-3);
          tmp[response[0] - 3] = 0;
          deviceInfo.deviceScalings.push_back(std::string((char*) &(tmp[0])));
@@ -583,10 +587,10 @@ int ZeissHub::GetDeviceScalings(MM::Device& device, MM::Core& core, ZeissUByte g
  */
 int ZeissHub::GetScalingTable(MM::Device& device, MM::Core& core, ZeissUByte groupName, ZeissUByte devId, ZeissDeviceInfo& deviceInfo, std::string unit)
 {
-   unsigned int commandLength = 6 + unit.length();
+   unsigned int commandLength = 6 + (unsigned int) unit.length();
    vector<unsigned char> command(commandLength);
    // Size of data block
-   command[0] = 0x03 + unit.length();
+   command[0] = 0x03 + (unsigned char) unit.length();
    // Read command, immediate answer
    command[1] = 0x15;
    // 'Find Devices'
@@ -746,14 +750,22 @@ int ZeissHub::GetReflectorLabels(MM::Device& device, MM::Core& core)
       return 0; // no reflectors, lets not make a fuss
    for (ZeissUShort i=0; i< g_deviceInfo[0x01].maxPos && i < 10; i++) {
       // Short name 1
+      memset(data, 0, g_hub.RCV_BUF_LENGTH);
       GetPermanentParameter(device, core, (ZeissUShort) 0x1500 + i + 1, 0x15, dataType, data, dataLength);
       std::ostringstream os;
       os << (i+1) << "-";
       label = os.str() + std::string(reinterpret_cast<char*> (data));
+      size_t pos = label.find(16);
+      if (pos != std::string::npos)
+         label.replace(pos, 1, " ");
       // Short name 2
+      memset(data, 0, g_hub.RCV_BUF_LENGTH);
       GetPermanentParameter(device, core, (ZeissUShort) 0x1500 + i + 1, 0x16, dataType, data, dataLength);
       label += " ";
       label += reinterpret_cast<char*> (data);
+      pos = label.find(16);
+      if (pos != std::string::npos)
+         label.replace(pos, 1, " ");
       reflectorList_[i] = label;
    }
    return 0;
@@ -1009,6 +1021,11 @@ int ZeissHub::GetAnswer(MM::Device& device, MM::Core& core, unsigned char* answe
    }
 
 
+   if (terminatorFound)
+      core.LogMessage(&device, "Found terminator in Scope answer", true);
+   else if (timeOut)
+      core.LogMessage(&device, "Timeout in Scope answer", true);
+
    ostringstream os;
    os << "Answer(hex): ";
    for (unsigned long i=0; i< answerLength; i++)
@@ -1031,6 +1048,8 @@ int ZeissHub::GetAnswer(MM::Device& device, MM::Core& core, unsigned char* answe
       ret = GetAnswer(device, core, answer, answerLength);
       if (ret != DEVICE_OK)
          return ret;
+      // MM::MMTime dif = core.GetCurrentMMTime() - startTime;
+      // printf ("Waited for %f usec, timeout: %f usec\n", dif.getUsec(), timeOutTime_.getUsec());
       if ((core.GetCurrentMMTime() - startTime) > timeOutTime_) {
          timeOut = true;
          ret = ERR_ANSWER_TIMEOUT;
@@ -1070,10 +1089,9 @@ bool ZeissHub::signatureFound(unsigned char* answer, unsigned char* signature, u
  * Sets position in scope model.  
  */
 int ZeissHub::SetModelPosition(ZeissUByte devId, ZeissLong position) {
-   //ACE_Guard<ACE_Mutex> guard(*g_ZeissCAN29_lock);
    MM_THREAD_GUARD_LOCK(&mutex);
    g_deviceInfo[devId].currentPos = position;
-   MM_THREAD_GUARD_LOCK(&mutex);
+   MM_THREAD_GUARD_UNLOCK(&mutex);
    return DEVICE_OK;
 }
 
@@ -1083,7 +1101,7 @@ int ZeissHub::SetModelPosition(ZeissUByte devId, ZeissLong position) {
 int ZeissHub::SetModelStatus(ZeissUByte devId, ZeissULong status) {
    MM_THREAD_GUARD_LOCK(&mutex);
    g_deviceInfo[devId].status = status;
-   MM_THREAD_GUARD_LOCK(&mutex);
+   MM_THREAD_GUARD_UNLOCK(&mutex);
    return DEVICE_OK;
 }
 
@@ -1240,7 +1258,7 @@ ZeissMonitoringThread::~ZeissMonitoringThread()
    printf("Destructing monitoringThread\n");
 }
 
-void ZeissMonitoringThread::interpretMessage(unsigned char* message, int messageLength)
+void ZeissMonitoringThread::interpretMessage(unsigned char* message)
 {
    //if (!(message[5] == 0)) // only message with Proc Id 0 are meant for us
    //  In reality I see here 0, 6, and 7???
@@ -1255,7 +1273,7 @@ void ZeissMonitoringThread::interpretMessage(unsigned char* message, int message
             position = ntohl(position);
          } else {
             memcpy(&position, message + 8, 2);
-            position = ntohs(position);
+            position = ntohs((unsigned short) position);
          }
          g_hub.SetModelPosition(message[7], position);
          g_hub.SetModelBusy(message[7], true);
@@ -1267,7 +1285,7 @@ void ZeissMonitoringThread::interpretMessage(unsigned char* message, int message
             position = ntohl(position);
          } else {
             memcpy(&position, message + 8, 2);
-            position = ntohs(position);
+            position = ntohs((unsigned short) position);
          }
          g_hub.SetModelPosition(message[7], position);
          g_hub.SetModelBusy(message[7], false);
@@ -1313,7 +1331,7 @@ MM_THREAD_FUNC_DECL ZeissMonitoringThread::svc(void *arg) {
                   os << hex << (unsigned int)message[i] << " ";
                thd->core_.LogMessage(&(thd->device_), os.str().c_str(), true);
                // and do the real stuff
-               thd->interpretMessage(message, messageLength);
+               thd->interpretMessage(message);
              }
             else {
                // no more messages, copy remaining (if any) back to beginning of buffer
@@ -1475,7 +1493,7 @@ ZeissChanger::~ZeissChanger()
 
 int ZeissChanger::SetPosition(MM::Device& device, MM::Core& core, ZeissUByte devId, int position)
 {
-   return ZeissDevice::SetPosition(device, core, g_commandGroup[devId_], devId_, position);
+   return ZeissDevice::SetPosition(device, core, g_commandGroup[devId], devId, position);
 }
 
 /////////////////////////////////////////////////////////////
@@ -1491,7 +1509,7 @@ ZeissServo::~ZeissServo()
 
 int ZeissServo::SetPosition(MM::Device& device, MM::Core& core, ZeissUByte devId, int position)
 {
-   return ZeissDevice::SetPosition(device, core, g_commandGroup[devId_], devId_, position);
+   return ZeissDevice::SetPosition(device, core, g_commandGroup[devId], devId, position);
 }
 
 /////////////////////////////////////////////////////////////
@@ -1786,7 +1804,7 @@ int Shutter::GetOpen(bool &open)
    return DEVICE_OK;
 }
 
-int Shutter::Fire(double deltaT)
+int Shutter::Fire(double)
 {
    return DEVICE_UNSUPPORTED_COMMAND;  
 }
@@ -2245,7 +2263,7 @@ int Turret::OnState(MM::PropertyBase* pProp, MM::ActionType eAct)
 // ReflectorTurret.  Inherits from Turret.  Only change is that it reads the 
 // labels from the Zeiss microscope
 ///////////////////////////////////////////////////////////////////////////////
-ReflectorTurret::ReflectorTurret(int devId, std::string name, std::string description) :
+ReflectorTurret::ReflectorTurret(ZeissUByte devId, std::string name, std::string description) :
    Turret(devId, name, description)
 {
 }
@@ -2277,7 +2295,7 @@ int ReflectorTurret::Initialize()
 // ObjectiveTurret.  Inherits from Turret.  Only change is that it reads the 
 // labels from the Zeiss microscope
 ///////////////////////////////////////////////////////////////////////////////
-ObjectiveTurret::ObjectiveTurret(int devId, std::string name, std::string description) :
+ObjectiveTurret::ObjectiveTurret(ZeissUByte devId, std::string name, std::string description) :
    Turret(devId, name, description)
 {
 }
@@ -2309,7 +2327,7 @@ int ObjectiveTurret::Initialize()
 // TubeLensTurret.  Inherits from Turret.  Only change is that it reads the 
 // labels from the Zeiss microscope
 ///////////////////////////////////////////////////////////////////////////////
-TubeLensTurret::TubeLensTurret(int devId, std::string name, std::string description) :
+TubeLensTurret::TubeLensTurret(ZeissUByte devId, std::string name, std::string description) :
    Turret(devId, name, description)
 {
 }
@@ -2341,7 +2359,7 @@ int TubeLensTurret::Initialize()
 // SidePortTurret.  Inherits from Turret.  Only change is that it reads the 
 // labels from the Zeiss microscope
 ///////////////////////////////////////////////////////////////////////////////
-SidePortTurret::SidePortTurret(int devId, std::string name, std::string description) :
+SidePortTurret::SidePortTurret(ZeissUByte devId, std::string name, std::string description) :
    Turret(devId, name, description)
 {
 }
@@ -2373,7 +2391,7 @@ int SidePortTurret::Initialize()
 // CondenserTurret.  Inherits from Turret.  Only change is that it reads the 
 // labels from the Zeiss microscope
 ///////////////////////////////////////////////////////////////////////////////
-CondenserTurret::CondenserTurret(int devId, std::string name, std::string description) :
+CondenserTurret::CondenserTurret(ZeissUByte devId, std::string name, std::string description) :
    Turret(devId, name, description)
 {
 }
