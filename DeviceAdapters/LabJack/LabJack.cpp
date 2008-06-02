@@ -64,7 +64,7 @@ using namespace std;
 #endif
 
 
-HANDLE hDevice;
+HANDLE hDevice = NULL;
 u3CalibrationInfo caliInfo;
 
 /*
@@ -74,8 +74,11 @@ int InitializeTheBoard()
 {
    //Open first found U3 over USB
    int localID = -1;
-   if( (hDevice = openUSBConnection(localID)) == NULL)
-      return DEVICE_ERR;
+   // don't try to open again if we have already opened
+   if( hDevice==NULL) {
+      if((hDevice = openUSBConnection(localID)) == NULL)
+         return DEVICE_ERR;
+   }
 
    //Get calibration information from U3
    if(getCalibrationInfo(hDevice, &caliInfo) < 0){
@@ -173,6 +176,16 @@ int CLJSwitch::Initialize()
    if (DEVICE_OK != nRet)
       return nRet;
 
+   // Channel
+   // -----
+   CPropertyAction* pAct = new CPropertyAction (this, &CLJSwitch::OnChannel);
+   nRet = CreateProperty(g_channel, "0", MM::Integer, false, pAct);
+   if (nRet != DEVICE_OK)
+      return nRet;
+   // TODO: can we query these?
+   nRet = SetPropertyLimits(g_channel, 0, 19);
+   if (nRet != DEVICE_OK) return nRet;
+
    // create positions and labels
    const int bufSize = 1024;
    char buf[bufSize];
@@ -184,7 +197,7 @@ int CLJSwitch::Initialize()
 
    // State
    // -----
-   CPropertyAction* pAct = new CPropertyAction (this, &CLJSwitch::OnState);
+   pAct = new CPropertyAction (this, &CLJSwitch::OnState);
    nRet = CreateProperty(MM::g_Keyword_State, "0", MM::Integer, false, pAct);
    if (nRet != DEVICE_OK)
       return nRet;
@@ -214,7 +227,7 @@ int CLJSwitch::Shutdown()
 
 int CLJSwitch::WriteToPort(long value)
 {
-   long error = eDO(hDevice, 1, 0 /*channel*/, value);
+   long error = eDO(hDevice, 1, channel_ /*channel*/, value);
    
    if (error != 0)
       return error;
@@ -244,7 +257,21 @@ int CLJSwitch::OnState(MM::PropertyBase* pProp, MM::ActionType eAct)
    return DEVICE_OK;
 }
 
-
+int CLJSwitch::OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      pProp->Set((long int)channel_);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      long channel;
+      pProp->Get(channel);
+//      if (channel >=0 && channel <=1)
+         channel_ = channel;
+   }
+   return DEVICE_OK;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // CLJDA implementation
@@ -316,7 +343,6 @@ int CLJDA::Initialize()
    nRet = SetPropertyLimits(g_channel, 0, 1);
    if (nRet != DEVICE_OK) return nRet;
       
-
    nRet = UpdateStatus();
    if (nRet != DEVICE_OK)
       return nRet;
@@ -348,23 +374,6 @@ int CLJDA::SetVolts(double volts)
    return DEVICE_OK;
 }
 
-int CLJDA::OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct)
-{
-   if (eAct == MM::BeforeGet)
-   {
-      pProp->Set((long int)channel_);
-   }
-   else if (eAct == MM::AfterSet)
-   {
-      long channel;
-      pProp->Get(channel);
-      if (channel >=0 && channel <=1)
-         channel_ = channel;
-   }
-   return DEVICE_OK;
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////
 // Action handlers
 ///////////////////////////////////////////////////////////////////////////////
@@ -385,6 +394,21 @@ int CLJDA::OnVolts(MM::PropertyBase* pProp, MM::ActionType eAct)
    return DEVICE_OK;
 }
 
+int CLJDA::OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      pProp->Set((long int)channel_);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      long channel;
+      pProp->Get(channel);
+      if (channel >=0 && channel <=1)
+         channel_ = channel;
+   }
+   return DEVICE_OK;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // CLJShutter implementation
@@ -440,9 +464,19 @@ int CLJShutter::Initialize()
    if (DEVICE_OK != ret)
       return ret;
 
+   // Channel
+   // -----
+   CPropertyAction* pAct = new CPropertyAction (this, &CLJShutter::OnChannel);
+   ret = CreateProperty(g_channel, "0", MM::Integer, false, pAct);
+   if (ret != DEVICE_OK)
+      return ret;
+   // TODO: can we query these?
+   ret = SetPropertyLimits(g_channel, 0, 19);
+   if (ret != DEVICE_OK) return ret;
+
    // OnOff
    // ------
-   CPropertyAction* pAct = new CPropertyAction (this, &CLJShutter::OnOnOff);
+   pAct = new CPropertyAction (this, &CLJShutter::OnOnOff);
    ret = CreateProperty("OnOff", "0", MM::Integer, false, pAct);
    if (ret != DEVICE_OK)
       return ret;
@@ -456,6 +490,7 @@ int CLJShutter::Initialize()
    ret = SetAllowedValues("OnOff", vals);
    if (ret != DEVICE_OK)
       return ret;
+
 
    ret = UpdateStatus();
    if (ret != DEVICE_OK)
@@ -505,7 +540,7 @@ int CLJShutter::Fire(double /*deltaT*/)
 
 int CLJShutter::WriteToPort(long value)
 {
-   long error = eDO(hDevice, 1, 0 /*channel*/, value);
+   long error = eDO(hDevice, 1, channel_ /*channel*/, value);
    
    if (error != 0)
       return error;
@@ -541,3 +576,18 @@ int CLJShutter::OnOnOff(MM::PropertyBase* pProp, MM::ActionType eAct)
    return DEVICE_OK;
 }
 
+int CLJShutter::OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      pProp->Set((long int)channel_);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      long channel;
+      pProp->Get(channel);
+      // if (channel >=0 && channel <=1)
+         channel_ = channel;
+   }
+   return DEVICE_OK;
+}

@@ -58,11 +58,13 @@ public:
    // action interface
    // ----------------
    int OnOnOff(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 private:
    int WriteToPort(long lnValue);
    long openTimeUs_;
    std::string name_;
+   unsigned channel_;
 
    bool initialized_;
 };
@@ -86,12 +88,14 @@ public:
    // action interface
    // ----------------
    int OnState(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 private:
    int OpenPort(const char* pszName, long lnValue);
    int WriteToPort(long lnValue);
    int ClosePort();
 
+   unsigned channel_;
    bool initialized_;
    bool busy_;
    long numPos_;
@@ -114,11 +118,11 @@ public:
    int SetSignal(double volts);
    int GetSignal(double& /*volts*/) {return DEVICE_UNSUPPORTED_COMMAND;}
    int GetLimits(double& minVolts, double& maxVolts) {minVolts = minV_; maxVolts = maxV_; return DEVICE_OK;}
-   int OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct);
 
    // action interface
    // ----------------
    int OnVolts(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnChannel(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 private:
    int WriteToPort(long lnValue);
