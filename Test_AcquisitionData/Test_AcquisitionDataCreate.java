@@ -32,7 +32,7 @@ public class Test_AcquisitionDataCreate {
          
          // instantiate 5d image object
          AcquisitionData ad = new AcquisitionData();
-         ad.createNew("newdata", acqDir);
+         ad.createNew("newdata", acqDir, true);
          ad.setImagePhysicalDimensions(w, h, depth);
          
          String channels[] = new String[2];

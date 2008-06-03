@@ -94,7 +94,7 @@ public class Test_AcquisitionDataInMem {
          System.out.println("Image contains " + length + " pixels.");
          
          // save data to file
-         ad.save(acqName, acqDir);
+         ad.save(acqName, acqDir, true);
          
       } catch (MMAcqDataException e) {
          e.printStackTrace();

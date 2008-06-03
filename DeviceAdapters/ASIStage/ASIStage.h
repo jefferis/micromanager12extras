@@ -73,6 +73,7 @@ public:
    // XYStage API
    // -----------
   int SetPositionUm(double x, double y);
+  int SetRelativePositionUm(double x, double y);
   int GetPositionUm(double& x, double& y);
   int SetPositionSteps(long x, long y);
   int GetPositionSteps(long& x, long& y);
@@ -103,6 +104,7 @@ private:
    int GetResolution(double& resX, double& resY);
    int GetDblParameter(const char* command, double& param);
    int GetPositionStepsSingle(char axis, long& steps);
+   int SetAxisDirection();
    bool hasCommand(std::string commnand);
    void Wait();
   

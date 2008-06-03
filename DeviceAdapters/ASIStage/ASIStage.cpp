@@ -183,6 +183,11 @@ int XYStage::Initialize()
    if (ret != DEVICE_OK)
       return false;
 
+   // Most ASIStages have the origin in the top right corner, the following reverses direction of the X-axis:
+   ret = SetAxisDirection();
+   if (ret != DEVICE_OK)
+      return ret;
+
    // set stage step size and resolution
    double resX, resY;
    // default values
@@ -242,7 +247,7 @@ int XYStage::Initialize()
    AddAllowedValue("MotorOnOff", "On");
    AddAllowedValue("MotorOnOff", "Off");
 
-   // NUmber of times stage approaches a new position (+1)
+   // Number of times stage approaches a new position (+1)
    if (hasCommand("CCA Y=?")) {
       pAct = new CPropertyAction(this, &XYStage::OnNrMoveRepetitions);
       CreateProperty("NrMoveRepetitions", "0", MM::Integer, false, pAct);
@@ -301,6 +306,39 @@ int XYStage::SetPositionUm(double x, double y)
 
    ostringstream command;
    command << "M X=" << x/stepSizeXUm_ << " Y=" << y/stepSizeYUm_; // in 10th of micros
+
+   // send command
+   int ret = SendSerialCommand(port_.c_str(), command.str().c_str(), "\r");
+   if (ret != DEVICE_OK)
+      return ret;
+
+   // block/wait for acknowledge, or until we time out;
+   string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r\n", answer);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   if ( (answer.substr(0,2).compare(":A") == 0) || (answer.substr(1,2).compare(":A") == 0) )
+   {
+      return DEVICE_OK;
+   }
+   // deal with error later
+   else if (answer.substr(0, 2).compare(":N") == 0 && answer.length() > 2)
+   {
+      int errNo = atoi(answer.substr(4).c_str());
+      return ERR_OFFSET + errNo;
+   }
+
+   return ERR_UNRECOGNIZED_ANSWER;  
+}
+
+int XYStage::SetRelativePositionUm(double x, double y)
+{
+   // empty the Rx serial buffer before sending command
+   ClearPort(*this, *GetCoreCallback(), port_.c_str()); 
+
+   ostringstream command;
+   command << "R X=" << x/stepSizeXUm_ << " Y=" << y/stepSizeYUm_; // in 10th of micros
 
    // send command
    int ret = SendSerialCommand(port_.c_str(), command.str().c_str(), "\r");
@@ -1247,18 +1285,6 @@ int XYStage::OnMotorCtrl(MM::PropertyBase* pProp, MM::ActionType eAct)
 // XYStage utility functions
 int XYStage::GetResolution(double& /*resX*/, double& /*resY*/)
 {
-   //const char* commandX="RES,X";
-   //const char* commandY="RES,Y";
-
-   //int ret = GetDblParameter(commandX, resX);
-   //if (ret != DEVICE_OK)
-   //   return ret;
-
-   //ret = GetDblParameter(commandY, resY);
-   //if (ret != DEVICE_OK)
-   //   return ret;
-
-   //return ret;
    return 0; // will remove it if need this function
 }
 
@@ -1291,30 +1317,31 @@ int XYStage::GetDblParameter(const char* /*command*/, double& /*param*/)
 
 int XYStage::GetPositionStepsSingle(char /*axis*/, long& /*steps*/)
 {
-   //ostringstream command;
-   //command << "P" << axis;
+   return ERR_UNRECOGNIZED_ANSWER;
+}
 
-   //// send command
-   //int ret = SendSerialCommand(port_.c_str(), command.str().c_str(), "\r");
-   //if (ret != DEVICE_OK)
-   //   return ret;
+int XYStage::SetAxisDirection()
+{
+   ostringstream command;
+   command << "UM X=-10000 Y=10000";
+   // send command
+   int ret = SendSerialCommand(port_.c_str(), command.str().c_str(), "\r");
+   if (ret != DEVICE_OK)
+      return ret;
 
-   //// block/wait for acknowledge, or until we time out;
-   //string answer;
-   //ret = GetSerialAnswer(port_.c_str(), "\r", answer);
-   //if (ret != DEVICE_OK)
-   //   return ret;
+   // block/wait for acknowledge, or until we time out;
+   string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r\n", answer);
+   if (ret != DEVICE_OK)
+      return ret;
 
-   //if (answer.length() > 2 && answer.substr(0, 1).compare("E") == 0)
-   //{
-   //   int errNo = atoi(answer.substr(2).c_str());
-   //   return ERR_OFFSET + errNo;
-   //}
-   //else if (answer.length() > 0)
-   //{
-   //   steps = atol(answer.c_str());
-   //   return DEVICE_OK;
-   //}
+   if (answer.substr(0,2).compare(":A") == 0)
+      return DEVICE_OK;
+   else if (answer.substr(0, 2).compare(":N") == 0 && answer.length() > 2)
+   {
+      int errNo = atoi(answer.substr(3).c_str());
+      return ERR_OFFSET + errNo;
+   }
 
    return ERR_UNRECOGNIZED_ANSWER;
 }
