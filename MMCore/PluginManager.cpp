@@ -21,7 +21,7 @@
 //
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 08/10/2005
 //
-// CVS:           $Id: PluginManager.cpp 941 2008-02-08 22:09:00Z nico $
+// CVS:           $Id: PluginManager.cpp 1238 2008-05-29 19:02:13Z nenad $
 //
 
 //#include "CoreUtils.h"
@@ -220,9 +220,18 @@ void CPluginManager::UnloadDevice(MM::Device* pDevice)
  */
 void CPluginManager::UnloadAllDevices()
 {
+   // do a two pass unloading so that USB ports and com ports unload last
    CDeviceMap::const_iterator it;
+
+   // first unload all devices but serial ports
    for (it=devices_.begin(); it != devices_.end(); it++)
-      UnloadDevice(it->second);
+      if (it->second != 0 && it->second->GetType() != MM::SerialDevice)
+         UnloadDevice(it->second);
+
+   // now unload remaining ports
+   for (it=devices_.begin(); it != devices_.end(); it++)
+      if (it->second != 0)
+         UnloadDevice(it->second);
 
    devices_.clear();
 }

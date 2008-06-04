@@ -6,6 +6,7 @@
 // DESCRIPTION:   The interface to the MM core services. 
 //              
 // COPYRIGHT:     University of California, San Francisco, 2006,
+//                100X Imaging Inc, www.100ximaging.com, 2008
 //                All Rights reserved
 //
 // LICENSE:       This library is free software; you can redistribute it and/or
@@ -32,6 +33,7 @@
 //                                   (automatic device type)
 //                05/15/2007, N.A. - Circular buffer interface and thread synchronization
 //                12/18/2007  N.A. - Callbacks for GUI side notifications
+//                05/20/2008  N.A. - Relative positions for stages, cached system state
 //
 // NOTES:                   
 //                Public methods follow slightly different naming conventions than
@@ -43,7 +45,7 @@
 //                because all public methods will most likely appear in other
 //                programming environments (Java or Python).
 //
-// CVS:           $Id: MMCore.h 941 2008-02-08 22:09:00Z nico $
+// CVS:           $Id: MMCore.h 1220 2008-05-26 21:04:07Z nenad $
 //
 #ifndef _MMCORE_H_
 #define _MMCORE_H_
@@ -60,6 +62,7 @@
 #include "../MMDevice/MMDeviceConstants.h"
 #include "../MMDevice/MMDevice.h"
 #include "PluginManager.h"
+#include "Configuration.h"
 #include "Error.h"
 #include "ErrorCodes.h"
 
@@ -112,6 +115,8 @@ public:
    std::string getVersionInfo() const;
    std::string getAPIVersionInfo() const;
    Configuration getSystemState() const;
+   Configuration getSystemStateCache() const;
+   void updateSystemStateCache();
    void setSystemState(const Configuration& conf);
    Configuration getConfigState(const char* group, const char* config) const throw (CMMError);
    Configuration getConfigGroupState(const char* group) const throw (CMMError);
@@ -134,7 +139,7 @@ public:
    //@ {
    std::vector<std::string> getDeviceLibraries(const char* path);
    std::vector<std::string> getLoadedDevices() const;
-   std::vector<std::string> getLoadedDevicesOfType(MM::DeviceType devType) throw (CMMError);
+   std::vector<std::string> getLoadedDevicesOfType(MM::DeviceType devType) const;
    std::vector<std::string> getDevicePropertyNames(const char* label) const throw (CMMError);
    std::string getProperty(const char* label, const char* propName) const throw (CMMError);
    void setProperty(const char* label, const char* propName, const char* propValue) throw (CMMError);
@@ -199,6 +204,7 @@ public:
    std::string getCurrentConfig(const char* groupName) const throw (CMMError);
    Configuration getConfigData(const char* configGroup, const char* configName) const throw (CMMError);
    double getPixelSizeUm() const;
+   double getMagnificationFactor() const;
    void setPixelSizeUm(const char* resoultionID, double pixSize)  throw (CMMError);
    void definePixelSizeConfig(const char* resolutionID, const char* deviceName, const char* propName, const char* value);
    std::vector<std::string> getAvailablePixelSizeConfigs() const;
@@ -295,7 +301,9 @@ public:
    //@ {
    void setPosition(const char* deviceName, double position) throw (CMMError);
    double getPosition(const char* deviceName) const throw (CMMError);
+   void setRelativePosition(const char* deviceName, double d) throw (CMMError);
    void setXYPosition(const char* deviceName, double x, double y) throw (CMMError);
+   void setRelativeXYPosition(const char* deviceName, double dx, double dy) throw (CMMError);
    void getXYPosition(const char* deviceName, double &x, double &y) throw (CMMError);
    double getXPosition(const char* deviceName) throw (CMMError);
    double getYPosition(const char* deviceName) throw (CMMError);
@@ -351,6 +359,7 @@ private:
    CConfigMap configs_;
    CPropBlockMap propBlocks_;
    bool debugLog_;
+   Configuration stateCache_; // system state cache
 
    bool isConfigurationCurrent(const Configuration& config) const;
    void applyConfiguration(const Configuration& config) throw (CMMError);

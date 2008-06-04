@@ -18,7 +18,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: MMDeviceConstants.h 1035 2008-03-13 21:43:48Z nenad $
+// CVS:           $Id: MMDeviceConstants.h 1224 2008-05-28 03:15:18Z nenad $
 //
 
 #ifndef _MMDEVICE_CONSTANTS_H_
@@ -109,6 +109,10 @@ namespace MM {
    const char* const g_Keyword_Channel          = "Channel";
    const char* const g_Keyword_Version          = "Version";
    const char* const g_Keyword_ColorMode        = "ColorMode";
+   const char* const g_Keyword_Transpose_SwapXY = "TransposeXY";
+   const char* const g_Keyword_Transpose_MirrorX = "TransposeMirrorX";
+   const char* const g_Keyword_Transpose_MirrorY = "TransposeMirrorY";
+   const char* const g_Keyword_Transpose_Correction = "TransposeCorrection";
 
    // configuration file format constants
    const char* const g_FieldDelimiters = ",";
@@ -169,7 +173,8 @@ namespace MM {
       CoreDevice,
       ImageProcessorDevice,
       ImageStreamerDevice,
-      SignalIODevice
+      SignalIODevice,
+      MagnifierDevice
    };
 
    enum PropertyType {

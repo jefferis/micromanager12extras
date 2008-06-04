@@ -62,6 +62,7 @@ NikonTE2000,Epi-Shutter,Epi-fluorescence shutter,3
 NikonTE2000,Uniblitz-Shutter,Uniblitz shutter,3
 NikonTE2000,PerfectFocus,PFS autofocus device,9
 ParallelPort,LPT1,Printer port TTL digital output,4
+Pecon,TempControl,Temperature controller 37-2 digital,8
 PI,PIZStage,PI E-662 Z-stage,5
 PI_GCS,PIZStage,PI GCS Z-stage,5
 Prior,Shutter-1,Pro Scan shutter 1,3
