@@ -22,7 +22,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: CoreCallback.h 1066 2008-03-28 00:23:26Z nenad $
+// CVS:           $Id: CoreCallback.h 1233 2008-05-29 00:50:00Z nenad $
 //
 #ifdef WIN32
 #pragma warning (disable : 4312 4244)
@@ -113,123 +113,11 @@ public:
       return pSerial->GetPortType();
    }
  
-   /**
-    * Sends an array of bytes to the port.
-    */
-   int WriteToSerial(const MM::Device* caller, const char* portName, const unsigned char* buf, unsigned long length)
-   {
-      MM::Serial* pSerial = 0;
-      try
-      {
-         pSerial = core_->getSpecificDevice<MM::Serial>(portName);
-      }
-      catch (CMMError& err)
-      {
-         return err.getCode();    
-      }
-      catch (...)
-      {
-         return DEVICE_SERIAL_COMMAND_FAILED;
-      }
-
-      // don't allow self reference
-      if (dynamic_cast<MM::Device*>(pSerial) == caller)
-         return DEVICE_SELF_REFERENCE;
-
-      return pSerial->Write(buf, length);
-   }
-   
-   /**
-    * Reads bytes form the port, up to the buffer length.
-    */
-   int ReadFromSerial(const MM::Device* caller, const char* portName, unsigned char* buf, unsigned long bufLength, unsigned long &bytesRead)
-   {
-      MM::Serial* pSerial = 0;
-      try
-      {
-         pSerial = core_->getSpecificDevice<MM::Serial>(portName);
-      }
-      catch (CMMError& err)
-      {
-         return err.getCode();    
-      }
-      catch (...)
-      {
-         return DEVICE_SERIAL_COMMAND_FAILED;
-      }
-
-      // don't allow self reference
-      if (dynamic_cast<MM::Device*>(pSerial) == caller)
-         return DEVICE_SELF_REFERENCE;
-
-      return pSerial->Read(buf, bufLength, bytesRead);
-   }
-
-   /**
-    * Clears port buffers.
-    */
-   int PurgeSerial(const MM::Device* caller, const char* portName)
-   {
-      MM::Serial* pSerial = 0;
-      try
-      {
-         pSerial = core_->getSpecificDevice<MM::Serial>(portName);
-      }
-      catch (CMMError& err)
-      {
-         return err.getCode();    
-      }
-      catch (...)
-      {
-         return DEVICE_SERIAL_COMMAND_FAILED;
-      }
-
-      // don't allow self reference
-      if (dynamic_cast<MM::Device*>(pSerial) == caller)
-         return DEVICE_SELF_REFERENCE;
-
-      return pSerial->Purge();
-   }
-
-   /**
-    * Sends an ASCII command terminated by the specified character sequence.
-    */
-   int SetSerialCommand(const MM::Device*, const char* portName, const char* command, const char* term)
-   {
-      assert(core_);
-      try {
-         core_->setSerialPortCommand(portName, command, term);
-      }
-      catch (...)
-      {
-         // trap all exceptions and return generic serial error
-         return DEVICE_SERIAL_COMMAND_FAILED;
-      }
-      return DEVICE_OK;
-   }
-   
-   /**
-    * Receives an ASCII string terminated by the specified character sequence.
-    * The terminator string is stripped of the answer. If the termination code is not
-    * received within the com port timeout and error will be flagged.
-    */
-   int GetSerialAnswer(const MM::Device*, const char* portName, unsigned long ansLength, char* answerTxt, const char* term)
-   {
-      assert(core_);
-      string answer;
-      try {
-         answer = core_->getSerialPortAnswer(portName, term);
-         if (answer.length() >= ansLength)
-            return DEVICE_SERIAL_BUFFER_OVERRUN;
-      }
-      catch (...)
-      {
-         // trap all exceptions and return generic serial error
-         return DEVICE_SERIAL_COMMAND_FAILED;
-      }
-      strcpy(answerTxt, answer.c_str());
-      return DEVICE_OK;
-   }
+   int WriteToSerial(const MM::Device* caller, const char* portName, const unsigned char* buf, unsigned long length);
+   int ReadFromSerial(const MM::Device* caller, const char* portName, unsigned char* buf, unsigned long bufLength, unsigned long &bytesRead);
+   int PurgeSerial(const MM::Device* caller, const char* portName);
+   int SetSerialCommand(const MM::Device*, const char* portName, const char* command, const char* term);
+   int GetSerialAnswer(const MM::Device*, const char* portName, unsigned long ansLength, char* answerTxt, const char* term);
 
    /**
     * Returns the number of microseconds since the system starting time.

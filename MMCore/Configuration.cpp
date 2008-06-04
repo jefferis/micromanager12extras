@@ -16,7 +16,7 @@
 //                IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
-// CVS:           $Id: Configuration.cpp 537 2007-10-30 23:27:38Z nenad $
+// CVS:           $Id: Configuration.cpp 1189 2008-05-21 01:03:48Z nenad $
 //
 #include "Configuration.h"
 #include "../MMDevice/MMDevice.h"
@@ -27,6 +27,14 @@
 #include <fstream>
 
 using namespace std;
+
+string PropertySetting::generateKey(const char* device, const char* prop)
+{
+   string key(device);
+   key += "-";
+   key += prop;
+   return key;
+}
 
 /**
  * Returns verbose description of the object's contents.
@@ -75,6 +83,7 @@ bool PropertySetting::isEqualTo(const PropertySetting& ps)
    else
       return false;
 }
+
 
 /**
   * Returns verbose description of the object's contents.
@@ -146,15 +155,13 @@ PropertySetting Configuration::getSetting(size_t index) const throw (CMMError)
   * Checks whether the property is included in the  configuration.
   */
 
-bool Configuration::isPropertyIncluded(const char* device, const char* property)
+bool Configuration::isPropertyIncluded(const char* device, const char* prop)
 {
-   vector<PropertySetting>::const_iterator it;
-   for (it=settings_.begin(); it!=settings_.end(); ++it)
-      if (it->getDeviceLabel().compare(device) == 0)
-         if (it->getPropertyName().compare(property) == 0)
-            return true;
-   
-   return false;
+   map<string, int>::iterator it = index_.find(PropertySetting::generateKey(device, prop));
+   if (it != index_.end())
+      return true;
+   else
+      return false;
 }
 
 /**
@@ -163,14 +170,11 @@ bool Configuration::isPropertyIncluded(const char* device, const char* property)
 
 bool Configuration::isSettingIncluded(const PropertySetting& ps)
 {
-   vector<PropertySetting>::const_iterator it;
-   for (it=settings_.begin(); it!=settings_.end(); ++it)
-      if (it->getDeviceLabel().compare(ps.getDeviceLabel()) == 0)
-         if (it->getPropertyName().compare(ps.getPropertyName()) == 0)
-            if (it->getPropertyValue().compare(ps.getPropertyValue()) == 0)
-               return true;
-   
-   return false;
+   map<string, int>::iterator it = index_.find(ps.getKey());
+   if (it != index_.end() && settings_[it->second].getPropertyValue().compare(ps.getPropertyValue()) == 0)
+      return true;
+   else
+      return false;
 }
 
 /**
@@ -187,6 +191,25 @@ bool Configuration::isConfigurationIncluded(const Configuration& cfg)
          return false;
    
    return true;
+}
+
+/**
+ * Adds new property setting to the existing contents.
+ */
+void Configuration::addSetting(const PropertySetting& setting)
+{
+   map<string, int>::iterator it = index_.find(setting.getKey());
+   if (it != index_.end())
+   {
+      // replace
+      settings_[it->second] = setting;
+   }
+   else
+   {
+      // add new
+      index_[setting.getKey()] = (int)settings_.size();
+      settings_.push_back(setting);
+   }
 }
 
 

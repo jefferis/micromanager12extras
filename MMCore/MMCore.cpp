@@ -5,7 +5,8 @@
 //-----------------------------------------------------------------------------
 // DESCRIPTION:   The interface to the MM core services. 
 //              
-// COPYRIGHT:     University of California, San Francisco, 2006,
+// COPYRIGHT:     University of California, San Francisco, 2006
+//                100X Imaging Inc, www.100ximaging.com, 2008
 //                All Rights reserved
 //
 // LICENSE:       This library is free software; you can redistribute it and/or
@@ -27,9 +28,7 @@
 //
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 06/07/2005
 // 
-// REVISIONS:     08/09/2005, N.A. - run-time loading of device libraries
-//                08/22/2005, N.A. - intelligent loading of devices
-//                                  automatic device type)
+// REVISIONS:     see MMCore.h
 //
 // NOTES:                   
 //                Public methods follow slightly different naming conventions than
@@ -41,7 +40,7 @@
 //                because all public methods will most likely appear in other
 //                programming environments (Java or Python).
 //
-// CVS:           $Id: MMCore.cpp 1076 2008-03-31 23:07:36Z nico $
+// CVS:           $Id: MMCore.cpp 1225 2008-05-28 04:34:39Z nico $
 //
 
 #ifdef WIN32
@@ -88,7 +87,7 @@ const char* g_logFileName = "CoreLog.txt";
 // version info
 const int MMCore_versionMajor = 2;
 const int MMCore_versionMinor = 2;
-const int MMCore_versionBuild = 2;
+const int MMCore_versionBuild = 3;
 
 // mutex
 //static ACE_Mutex g_lock;
@@ -411,7 +410,27 @@ Configuration CMMCore::getSystemState() const
          config.addSetting(PropertySetting(i->c_str(), name, val, readOnly));
      }   
    }
+
+   // add core properties
+   vector<string> coreProps = properties_->GetNames();
+   for (unsigned i=0; i < coreProps.size(); i++)
+   {
+      string name = coreProps[i];
+      string val = properties_->Get(name.c_str());
+      config.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, name.c_str(), val.c_str(), properties_->IsReadOnly(name.c_str())));
+   }
+
    return config;
+}
+
+/**
+ * Returns the entire system state, i.e. the collection of all property values from all devices.
+ * This method will return cached values instead of querying each device
+ * @return - Configuration object containing a collection of device-property-value triplets
+ */
+Configuration CMMCore::getSystemStateCache() const
+{
+   return stateCache_;
 }
 
 /**
@@ -484,6 +503,8 @@ void CMMCore::setSystemState(const Configuration& conf)
          }
       }
    }
+
+   updateSystemStateCache();
 }
 
 /**
@@ -733,6 +754,7 @@ void CMMCore::initializeAllDevices() throw (CMMError)
    // Busy flag time out: all positive values are allowed
    
    properties_->Refresh();
+
 }
 
 /**
@@ -752,6 +774,15 @@ void CMMCore::initializeDevice(const char* label) throw (CMMError)
    }
    
    CORE_LOG1("Device %s initialized.\n", label);
+}
+
+/**
+ * Updates the state of the entire hardware.
+ */
+void CMMCore::updateSystemStateCache()
+{
+   stateCache_ = getSystemState();
+   CORE_LOG("Syestem state cache updated.\n");
 }
 
 /**
@@ -988,6 +1019,25 @@ void CMMCore::setPosition(const char* label, double position) throw (CMMError)
 }
 
 /**
+ * Sets the relative position of the stage in microns.
+ * @param const char* label
+ * @param double d
+ */
+void CMMCore::setRelativePosition(const char* label, double d) throw (CMMError)
+{
+   MM::Stage* pStage = getSpecificDevice<MM::Stage>(label);
+   int ret = pStage->SetRelativePositionUm(d);
+   if (ret != DEVICE_OK)
+   {
+      char name[MM::MaxStrLength];
+      pStage->GetName(name);
+      logError(name, getDeviceErrorText(ret, pStage).c_str());
+      throw CMMError(getDeviceErrorText(ret, pStage).c_str(), MMERR_DEVICE_GENERIC);
+   }
+   CORE_DEBUG2("%s moved relative %.5g um\n", label, d);
+}
+
+/**
  * Returns the current position of the stage in microns.
  * @return position 
  * @param label
@@ -1025,6 +1075,26 @@ void CMMCore::setXYPosition(const char* deviceName, double x, double y) throw (C
       throw CMMError(getDeviceErrorText(ret, pXYStage).c_str(), MMERR_DEVICE_GENERIC);
    }
    CORE_DEBUG3("%s set to %g.3 %g.3 um\n", deviceName, x, y);
+}
+
+/**
+ * Sets the relative position of the XY stage in microns.
+ * @param const char* label
+ * @param dx
+ * @param dy
+ */
+void CMMCore::setRelativeXYPosition(const char* deviceName, double dx, double dy) throw (CMMError)
+{
+   MM::XYStage* pXYStage = getSpecificDevice<MM::XYStage>(deviceName);
+   int ret = pXYStage->SetRelativePositionUm(dx, dy);
+   if (ret != DEVICE_OK)
+   {
+      char name[MM::MaxStrLength];
+      pXYStage->GetName(name);
+      logError(name, getDeviceErrorText(ret, pXYStage).c_str());
+      throw CMMError(getDeviceErrorText(ret, pXYStage).c_str(), MMERR_DEVICE_GENERIC);
+   }
+   CORE_DEBUG3("%s moved relative %g.3 %g.3 um\n", deviceName, dx, dy);
 }
 
 /**
@@ -1234,6 +1304,7 @@ void CMMCore::setAutoShutter(bool state)
 {
    properties_->Set(MM::g_Keyword_CoreAutoShutter, state ? "1" : "0");
    autoShutter_ = state;
+   stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreAutoShutter, state ? "1" : "0"));
    CORE_LOG1("Auto shutter %s.\n", state ? "ON" : "OFF");
 }
 
@@ -1257,6 +1328,13 @@ void CMMCore::setShutterOpen(bool state) throw (CMMError)
       {
          logError("CMMCore::setShutterOpen()", getDeviceErrorText(ret, shutter_).c_str());
          throw CMMError(getDeviceErrorText(ret, shutter_).c_str(), MMERR_DEVICE_GENERIC);
+      }
+
+      if (shutter_->HasProperty(MM::g_Keyword_State))
+      {
+         char shutterName[MM::MaxStrLength];
+         shutter_->GetLabel(shutterName);
+         stateCache_.addSetting(PropertySetting(shutterName, MM::g_Keyword_State, CDeviceUtils::ConvertToString(state)));
       }
    }
 }
@@ -1639,6 +1717,7 @@ void CMMCore::setAutoFocusDevice(const char* autofocusLabel) throw (CMMError)
       CORE_LOG("Auto-focus device removed.\n");
    }
    properties_->Refresh(); // TODO: more efficient
+   stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreAutoFocus, getAutoFocusDevice().c_str()));
 }
 
 /**
@@ -1676,6 +1755,7 @@ void CMMCore::setImageProcessorDevice(const char* procLabel) throw (CMMError)
       CORE_LOG("Image processor device removed.\n");
    }
    properties_->Refresh(); // TODO: more efficient
+   stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreImageProcessor, getImageProcessorDevice().c_str()));
 }
 
 
@@ -1720,6 +1800,7 @@ void CMMCore::setShutterDevice(const char* shutterLabel) throw (CMMError)
       CORE_LOG("Shutter device removed.\n");
    }
    properties_->Refresh(); // TODO: more efficient
+   stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreShutter, getShutterDevice().c_str()));
 }
 
 /**
@@ -1739,6 +1820,7 @@ void CMMCore::setFocusDevice(const char* focusLabel) throw (CMMError)
       CORE_LOG("Focus device removed.\n");
    }
    properties_->Refresh(); // TODO: more efficient
+   stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreFocus, getFocusDevice().c_str()));
 }
 
 /**
@@ -1756,6 +1838,7 @@ void CMMCore::setXYStageDevice(const char* xyDeviceLabel) throw (CMMError)
       xyStage_ = 0;
       CORE_LOG("XYDevice device removed.\n");
    }
+   stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreXYStage, getXYStageDevice().c_str()));
 }
 
 /**
@@ -1775,6 +1858,7 @@ void CMMCore::setCameraDevice(const char* cameraLabel) throw (CMMError)
       CORE_LOG("Camera device removed.\n");
    }
    properties_->Refresh(); // TODO: more efficient
+   stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, MM::g_Keyword_CoreCamera, getCameraDevice().c_str()));
 }
 
 /**
@@ -1828,7 +1912,7 @@ vector<string> CMMCore::getLoadedDevices() const
  * @param devType - device type identifier
  * @return vector<string> array of labels
  */
-vector<string> CMMCore::getLoadedDevicesOfType(MM::DeviceType devType) throw (CMMError)
+vector<string> CMMCore::getLoadedDevicesOfType(MM::DeviceType devType) const
 {
    if (devType == MM::CoreDevice) {
       vector<string> coreDev;
@@ -1903,6 +1987,12 @@ string CMMCore::getProperty(const char* label, const char* propName) const throw
    int nRet = pDevice->GetProperty(propName, value);
    if (nRet != DEVICE_OK)
       throw CMMError(label, getDeviceErrorText(nRet, pDevice).c_str(), MMERR_DEVICE_GENERIC);
+   
+   // uste the opportunity to update the cache
+   /* TODO: it would be nice but actually we can't do that since this is a const method
+   PropertySetting s(label, propName, value);
+   stateCache_.addSetting(s);
+   */
 
    return string(value);
 }
@@ -1926,6 +2016,7 @@ void CMMCore::setProperty(const char* label, const char* propName,
    if (strcmp(label, MM::g_Keyword_CoreDevice) == 0)
    {
       properties_->Execute(propName, propValue);
+      stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, propName, propValue));
    }
    else
    {
@@ -1940,6 +2031,7 @@ void CMMCore::setProperty(const char* label, const char* propName,
       int nRet = pDevice->SetProperty(propName, propValue);
       if (nRet != DEVICE_OK)
          throw CMMError(label, getDeviceErrorText(nRet, pDevice).c_str(), MMERR_DEVICE_GENERIC);
+      stateCache_.addSetting(PropertySetting(label, propName, propValue));
    }
 
    CORE_DEBUG3("Property set: device=%s, name=%s, value=%s\n", label, propName, propValue);
@@ -2227,7 +2319,15 @@ std::vector<std::string> CMMCore::getChannelNames() const
 void CMMCore::setExposure(double dExp) throw (CMMError)
 {
    if (camera_)
+   {
       camera_->SetExposure(dExp);
+      if (camera_->HasProperty(MM::g_Keyword_Exposure))
+      {
+         char cameraName[MM::MaxStrLength];
+         camera_->GetLabel(cameraName);
+         stateCache_.addSetting(PropertySetting(cameraName, MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(dExp)));
+      }
+   }
    else
       throw CMMError(getCoreErrorText(MMERR_CameraNotAvailable).c_str(), MMERR_CameraNotAvailable);
 
@@ -2323,6 +2423,15 @@ void CMMCore::setState(const char* deviceLabel, long state) throw (CMMError)
    if (nRet != DEVICE_OK)
       throw CMMError(deviceLabel, getDeviceErrorText(nRet, pStateDev).c_str(), MMERR_DEVICE_GENERIC);
 
+   if (pStateDev->HasProperty(MM::g_Keyword_State))
+   {
+      stateCache_.addSetting(PropertySetting(deviceLabel, MM::g_Keyword_State, CDeviceUtils::ConvertToString(state)));
+   }
+   if (pStateDev->HasProperty(MM::g_Keyword_Label))
+   {
+      stateCache_.addSetting(PropertySetting(deviceLabel, MM::g_Keyword_Label, getStateLabel(deviceLabel).c_str()));
+   }
+
    CORE_DEBUG2("%s set to state %d\n", deviceLabel, (int)state);
 }
 
@@ -2368,6 +2477,16 @@ void CMMCore::setStateLabel(const char* deviceLabel, const char* stateLabel) thr
    int nRet = pStateDev->SetPosition(stateLabel);
    if (nRet != DEVICE_OK)
       throw CMMError(deviceLabel, getDeviceErrorText(nRet, pStateDev).c_str(), MMERR_DEVICE_GENERIC);
+
+   if (pStateDev->HasProperty(MM::g_Keyword_Label))
+   {
+      stateCache_.addSetting(PropertySetting(deviceLabel, MM::g_Keyword_Label, stateLabel));
+   }
+   if (pStateDev->HasProperty(MM::g_Keyword_State))
+   {
+      stateCache_.addSetting(PropertySetting(deviceLabel, MM::g_Keyword_State,
+                             CDeviceUtils::ConvertToString(getStateFromLabel(deviceLabel, stateLabel))));
+   }
 
    CORE_DEBUG2("%s set to state label %s\n", deviceLabel, stateLabel);
 }
@@ -2851,9 +2970,7 @@ double CMMCore::getPixelSizeUm() const
          double pixSize = pCfg->getPixelSizeUm();
          if (camera_)
          {
-            double nominalPixelSize = camera_->GetNominalPixelSizeUm();
-            if (nominalPixelSize > 0.0)
-               pixSize *= (camera_->GetPixelSizeUm() / nominalPixelSize);
+            pixSize *= camera_->GetBinning() / getMagnificationFactor();
          }
          return pixSize;
       }
@@ -2862,6 +2979,27 @@ double CMMCore::getPixelSizeUm() const
    return 0.0;
 }
 
+/**
+ * Returns the product of all Magnifiers in the system or 1.0 when none is found
+ * This is used internally by GetPixelSizeUm (NS, 5/24/08)
+ */
+double CMMCore::getMagnificationFactor() const
+{
+   double magnification = 1.0;
+   vector<string> magnifiers = getLoadedDevicesOfType(MM::MagnifierDevice);
+   for (size_t i=0; i<magnifiers.size(); i++)
+   {
+      try
+      {
+         magnification *= getSpecificDevice<MM::Magnifier>(magnifiers[i].c_str())->GetMagnification();
+      }
+      catch (CMMError e)
+      {
+         assert(!"Internal error in generating a list of specific devices");
+      }
+   }
+   return magnification;
+}
 
 /**
  * Checks if the configuration already exists within a group.
@@ -3524,11 +3662,14 @@ void CMMCore::loadSystemConfiguration(const char* fileName) throw (CMMError)
    {
       throw CMMError(summaryErrorText.str().c_str(), MMERR_InvalidConfigurationFile);
    }
+
    // file parsing finished, try to set startup configuration
    if (isConfigDefined(MM::g_CFGGroup_System, MM::g_CFGGroup_System_Startup))
       this->setConfig(MM::g_CFGGroup_System, MM::g_CFGGroup_System_Startup);
    waitForSystem();
 
+   // update the system cache
+   updateSystemStateCache();
 }
 
 
@@ -3697,6 +3838,7 @@ void CMMCore::applyConfiguration(const Configuration& config) throw (CMMError)
       if (setting.getDeviceLabel().compare(MM::g_Keyword_CoreDevice) == 0)
       {
          properties_->Execute(setting.getPropertyName().c_str(), setting.getPropertyValue().c_str());
+         stateCache_.addSetting(PropertySetting(MM::g_Keyword_CoreDevice, setting.getPropertyName().c_str(), setting.getPropertyValue().c_str()));
       }
       else
       {
@@ -3708,6 +3850,7 @@ void CMMCore::applyConfiguration(const Configuration& config) throw (CMMError)
             logError(setting.getDeviceLabel().c_str(), getDeviceErrorText(ret, pDevice).c_str());
             throw CMMError(setting.getDeviceLabel().c_str(), getDeviceErrorText(ret, pDevice).c_str(), MMERR_DEVICE_GENERIC);
          }
+         stateCache_.addSetting(setting);
       }
    }
 }

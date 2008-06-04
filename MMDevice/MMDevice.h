@@ -26,14 +26,14 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: MMDevice.h 1070 2008-03-29 04:17:50Z nico $
+// CVS:           $Id: MMDevice.h 1246 2008-05-30 20:31:27Z nico $
 //
 
 ///////////////////////////////////////////////////////////////////////////////
 // Header version
 // If any of the class declarations changes, the interface version
 // must be incremented
-#define DEVICE_INTERFACE_VERSION 25
+#define DEVICE_INTERFACE_VERSION 26
 ///////////////////////////////////////////////////////////////////////////////
 
 #ifndef _MMDEVICE_H_
@@ -226,7 +226,6 @@ namespace MM {
       virtual unsigned GetImageHeight() const = 0;
       virtual unsigned GetImageBytesPerPixel() const = 0;
       virtual unsigned GetBitDepth() const = 0;
-      virtual double GetNominalPixelSizeUm() const = 0;
       virtual double GetPixelSizeUm() const = 0;
       virtual int GetBinning() const = 0;
       virtual int SetBinning(int binSize) = 0;
@@ -274,6 +273,7 @@ namespace MM {
    
       // Stage API
       virtual int SetPositionUm(double pos) = 0;
+      virtual int SetRelativePositionUm(double d) = 0;
       virtual int GetPositionUm(double& pos) = 0;
       virtual int SetPositionSteps(long steps) = 0;
       virtual int GetPositionSteps(long& steps) = 0;
@@ -296,6 +296,7 @@ namespace MM {
 
       // XYStage API
       virtual int SetPositionUm(double x, double y) = 0;
+      virtual int SetRelativePositionUm(double dx, double dy) = 0;
       virtual int GetPositionUm(double& x, double& y) = 0;
       virtual int SetPositionSteps(long x, long y) = 0;
       virtual int GetPositionSteps(long& x, long& y) = 0;
@@ -425,6 +426,22 @@ namespace MM {
       virtual int SetSignal(double volts) = 0;
       virtual int GetSignal(double& volts) = 0;
       virtual int GetLimits(double& minVolts, double& maxVolts) = 0;
+   };
+
+   /**
+   * Devices that can change magnification of the system
+   */
+   class Magnifier : public Device
+   {
+   public:
+      Magnifier() {}
+      virtual ~Magnifier() {}
+
+      // MMDevice API
+      virtual DeviceType GetType() const {return MagnifierDevice;}
+      static const DeviceType Type = MagnifierDevice;
+
+      virtual double GetMagnification() = 0;
    };
 
 

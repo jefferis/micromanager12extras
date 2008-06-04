@@ -17,6 +17,7 @@
 #include "../../MMDevice/DeviceBase.h"
 #include "../../MMDevice/ImgBuffer.h"
 #include "../../MMDevice/DeviceUtils.h"
+#include "../../MMDevice/DeviceThreads.h"
 #include <dc1394/control.h>
 #include <string>
 #include <map>
@@ -50,12 +51,22 @@
 #define ERR_SET_F7_COLOR_CODING_FAILED 126
 #define ERR_GET_F7_MAX_IMAGE_SIZE_FAILED 127
 #define ERR_NOT_IMPLEMENTED 128
+#define ERR_BUSY_ACQUIRING 129
 
+// From Guppy Tech Manual there is:
+// 00 0A 47 …. Node_Vendor_Id
+#define AVT_VENDOR_ID 2631
+
+// forward declaration
+class AcqSequenceThread;
 //////////////////////////////////////////////////////////////////////////////
 // Implementation of the MMDevice and MMCamera interfaces
 //
 class Cdc1394 : public CCameraBase<Cdc1394>
 {
+   
+friend class AcqSequenceThread;
+   
 public:
    static Cdc1394* GetInstance();
    ~Cdc1394();
@@ -97,6 +108,11 @@ public:
    int OnTemperature(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnMode(MM::PropertyBase* pProp, MM::ActionType eAct);
 
+   // high-speed interface
+   int StartSequenceAcquisition(long numImages, double interval_ms);
+   int StopSequenceAcquisition();
+   int PushImage(dc1394video_frame_t *myframe);
+
 private:
    Cdc1394();
    int ResizeImageBuffer();
@@ -137,6 +153,9 @@ private:
    dc1394video_mode_t mode;                                               
    // GJ keep track of whether the camera is interlaced
    bool avtInterlaced;
+   // GJ will store whether we have absolute shutter control
+   // (using a float value in seconds)
+   bool absoluteShutterControl;
    
    dc1394color_coding_t colorCoding;
    dc1394featureset_t features;
@@ -161,8 +180,38 @@ private:
    long lnBin_;
    //char logMsg_[256];
    std::ostringstream logMsg_;
-
+   
+   // For Burst Mode
+   bool acquiring_;
+   unsigned long imageCounter_;
+   unsigned long sequenceLength_;
+   bool init_seqStarted_;
+   AcqSequenceThread* acqThread_; // burst mode thread
+   
 };
 
+/**
+ * Acquisition thread
+ */
+class AcqSequenceThread : public MMDeviceThreadBase
+{
+public:
+   AcqSequenceThread(Cdc1394* pCam) : 
+      intervalMs_(100.0), numImages_(1), busy_(false), stop_(false) {camera_ = pCam;}
+   ~AcqSequenceThread() {}
+   int svc(void);
+
+   void SetInterval(double intervalMs) {intervalMs_ = intervalMs;}
+   void SetLength(long images) {numImages_ = images;}
+   void Stop() {stop_ = true;}
+   void Start() {stop_ = false; activate();}
+
+private:
+   Cdc1394* camera_;
+   double intervalMs_;
+   long numImages_;
+   bool busy_;
+   bool stop_;
+};
 
 #endif //_DC1394_H_

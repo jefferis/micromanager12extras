@@ -63,6 +63,7 @@ Source: micro-manager-1.2\mmgr_dal_Conix.dll; DestDir: {app}; Flags: ignoreversi
 Source: micro-manager-1.2\mmgr_dal_SpectralLMM5.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_PI_GCS.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_PI.dll; DestDir: {app}; Flags: ignoreversion
+Source: micro-manager-1.2\mmgr_dal_Pecon.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\mmgr_dal_DAZStage.dll; DestDir: {app}; Flags: ignoreversion
 Source: micro-manager-1.2\ace.dll; DestDir: {app}; Flags: ignoreversion
 

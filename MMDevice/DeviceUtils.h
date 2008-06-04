@@ -17,7 +17,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: DeviceUtils.h 393 2007-07-26 00:06:54Z nenad $
+// CVS:           $Id: DeviceUtils.h 1209 2008-05-23 05:38:39Z nenad $
 //
 
 #ifndef _DEVICEUTILS_H_
@@ -35,6 +35,7 @@ public:
    static const char* ConvertToString(long lnVal);
    static const char* ConvertToString(double dVal);
    static const char* ConvertToString(int val);
+   static const char* ConvertToString(bool val);
    static void Tokenize(const std::string& str, std::vector<std::string>& tokens, const std::string& delimiters = ",");
    static void SleepMs(long ms);
 private:

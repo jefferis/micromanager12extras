@@ -20,7 +20,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: DeviceBase.h 1070 2008-03-29 04:17:50Z nico $
+// CVS:           $Id: DeviceBase.h 1225 2008-05-28 04:34:39Z nico $
 //
 
 #ifndef _DEVICE_BASE_H_
@@ -698,6 +698,27 @@ template <class U>
 class CCameraBase : public CDeviceBase<MM::Camera, U>
 {
 public:
+   using CDeviceBase<MM::Camera, U>::CreateProperty;
+   using CDeviceBase<MM::Camera, U>::SetAllowedValues;
+   using CDeviceBase<MM::Camera, U>::GetBinning;
+
+   CCameraBase() 
+   {
+      // create and intialize common transpose properties
+      std::vector<std::string> allowedValues;
+      allowedValues.push_back("0");
+      allowedValues.push_back("1");
+      CreateProperty(MM::g_Keyword_Transpose_SwapXY, "0", MM::Integer, false);
+      SetAllowedValues(MM::g_Keyword_Transpose_SwapXY, allowedValues);
+      CreateProperty(MM::g_Keyword_Transpose_MirrorX, "0", MM::Integer, false);
+      SetAllowedValues(MM::g_Keyword_Transpose_MirrorX, allowedValues);
+      CreateProperty(MM::g_Keyword_Transpose_MirrorY, "0", MM::Integer, false);
+      SetAllowedValues(MM::g_Keyword_Transpose_MirrorY, allowedValues);
+      CreateProperty(MM::g_Keyword_Transpose_Correction, "0", MM::Integer, false);
+      SetAllowedValues(MM::g_Keyword_Transpose_Correction, allowedValues);
+   }
+
+   ~CCameraBase() {}
 
    /**
     * Default implementation is to not support streaming mode.
@@ -718,16 +739,16 @@ public:
    /**
     * Default implementation of the pixel size cscaling.
     */
-   double GetPixelSizeUm() const {return GetNominalPixelSizeUm() * GetBinning();}
+   double GetPixelSizeUm() const {return GetBinning();}
 
    /**
     * The following methods are only temporary solutions to avoid breaking older drivers
     * TODO: they should be removed to force correct implementation for each camera
     * N.A. 7-25-07
     */
-   double GetNominalPixelSizeUm() const {return 1.0;}
-   int GetBinning() const {return 1;}
-   int SetBinning(int /* binSize */) {return DEVICE_OK;}
+   // Now make these two mandatory (NS, 5/24/08)
+   // int GetBinning() const {return 1;}
+   // int SetBinning(int /* binSize */) {return DEVICE_OK;}
    unsigned GetNumberOfChannels() const {return 1;}
    int GetChannelName(unsigned channel, char* name)
    {
@@ -741,8 +762,6 @@ public:
    {
       return 0;
    }
-
-
 };
 
 /**
@@ -751,6 +770,19 @@ public:
 template <class U>
 class CStageBase : public CDeviceBase<MM::Stage, U>
 {
+   /**
+    * Default implementation for the realative motion
+    */
+   using CDeviceBase<MM::Stage, U>::GetPositionUm;
+   using CDeviceBase<MM::Stage, U>::SetPositionUm;
+   int SetRelativePositionUm(double d)
+   {
+      double pos;
+      int ret = GetPositionUm(pos);
+      if (ret != DEVICE_OK)
+         return ret;
+      return SetPositionUm(pos + d);
+   }
 };
 
 /**
@@ -759,6 +791,19 @@ class CStageBase : public CDeviceBase<MM::Stage, U>
 template <class U>
 class CXYStageBase : public CDeviceBase<MM::XYStage, U>
 {
+   using CDeviceBase<MM::XYStage, U>::GetPositionUm;
+   using CDeviceBase<MM::XYStage, U>::SetPositionUm;
+   /**
+    * Default implementation for the realative motion
+    */
+   int SetRelativePositionUm(double dx, double dy)
+   {
+      double x, y;
+      int ret = GetPositionUm(x, y);
+      if (ret != DEVICE_OK)
+         return ret;
+      return SetPositionUm(x + dx, y + dy);
+   }
 };
 
 /**
@@ -798,6 +843,14 @@ class CImageProcessorBase : public CDeviceBase<MM::ImageProcessor, U>
  */
 template <class U>
 class CSignalIOBase : public CDeviceBase<MM::SignalIO, U>
+{
+};
+
+/**
+ * Base class for creating devices that can change magnification (NS).
+ */
+template <class U>
+class CMagnifierBase : public CDeviceBase<MM::Magnifier, U>
 {
 };
 
@@ -842,8 +895,7 @@ public:
    int GetPosition(long& pos) const
    {
       char buf[MM::MaxStrLength];
-      // !!! we expect that State property is defined for this device, but
-      // what if it isn't?
+      assert(this->HasProperty(MM::g_Keyword_State));
       int ret = this->GetProperty(MM::g_Keyword_State, buf);
       if (ret == DEVICE_OK)
       {

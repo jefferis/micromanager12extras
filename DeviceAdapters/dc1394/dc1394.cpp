@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+   ///////////////////////////////////////////////////////////////////////////////
 // FILE:       dc1394.cpp
 // PROJECT:    MicroManage
 // SUBSYSTEM:  DeviceAdapters
@@ -39,6 +39,7 @@
 #include <dc1394/control.h>
 #include <dc1394/utils.h>
 #include <dc1394/conversions.h>
+#include <dc1394/vendor/avt.h>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -142,6 +143,9 @@ Cdc1394::Cdc1394() :
    
    // GJ set these to false for now
    avtInterlaced=false;
+   
+   // Create a thread for burst mode
+   acqThread_ = new AcqSequenceThread(this); 
 }
 
 Cdc1394::~Cdc1394()
@@ -155,6 +159,9 @@ Cdc1394::~Cdc1394()
 
       // clear the instance pointer
       m_pInstance = 0;
+
+      // Clear the burst mode thread
+      delete acqThread_;
    }
 }
 
@@ -286,6 +293,57 @@ int Cdc1394::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 int Cdc1394::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+   double exposure_ms;
+   uint32_t exposure_us;
+
+   if(!absoluteShutterControl) return DEVICE_OK;
+   
+   if (eAct == MM::AfterSet)
+   {
+      // Get the new exposure time (in ms)
+      pProp->Get(exposure_ms);
+      // Send the new exposure setting to the camera if we have absolute control
+      if(camera->vendor_id==AVT_VENDOR_ID){
+         // AVT has vendor specific code for an extended shutter
+         // this accepts shutter times in µs which makes it easier to work with
+         // OK, set using extended register, MM exposure is in ms so *1000 -> us
+         exposure_us = (uint32_t) 1000.0*exposure_ms;
+         err=dc1394_avt_set_extented_shutter(camera,exposure_us);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+      } else {
+         // set using ordinary absolute shutter dc1394 function
+         // this expects a float in seconds
+         float minAbsShutter, maxAbsShutter;
+         err = dc1394_feature_get_absolute_boundaries(camera, DC1394_FEATURE_SHUTTER, &minAbsShutter, &maxAbsShutter);
+         float exposure_s=0.001f*(float)exposure_ms;
+         if(minAbsShutter>exposure_s || exposure_s>maxAbsShutter) return DEVICE_ERR;
+         
+         err=dc1394_feature_set_absolute_control(camera,DC1394_FEATURE_SHUTTER,DC1394_ON);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+
+         err=dc1394_feature_set_absolute_value(camera,DC1394_FEATURE_SHUTTER,exposure_s);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;		 
+      }
+   }
+   else if (eAct == MM::BeforeGet)
+   {  
+      if(camera->vendor_id==AVT_VENDOR_ID){
+         // AVT has vendor specific code for an extended shutter
+         // this accepts shutter times in µs which makes it easier to work with
+         err=dc1394_avt_get_extented_shutter(camera,&exposure_us);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+         // convert it to milliseconds
+         exposure_ms = 0.001 * (double) exposure_us;         
+      } else {
+          // set using ordinary absolute shutter dc1394 function
+          // this expects a float in seconds
+         float exposure_s;
+         err=dc1394_feature_get_absolute_value(camera,DC1394_FEATURE_SHUTTER,&exposure_s);
+         if(err!=DC1394_SUCCESS) return DEVICE_ERR;
+         exposure_ms=1000.0 * (double) exposure_s;
+      }      
+      pProp->Set(exposure_ms);
+   }
    return DEVICE_OK;
 }
 
@@ -421,7 +479,11 @@ int Cdc1394::OnGamma(MM::PropertyBase* pProp, MM::ActionType eAct)
 // Shutter
 int Cdc1394::OnShutter(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
-  return OnFeature(pProp, eAct, shutter, shutterMin, shutterMax, DC1394_FEATURE_SHUTTER);
+   if((eAct == MM::AfterSet) && absoluteShutterControl){
+      // Need to turn off absolute mode so that we can set it using integer shutter values
+      dc1394_feature_set_absolute_control(camera, DC1394_FEATURE_SHUTTER, DC1394_OFF);
+   }
+   return OnFeature(pProp, eAct, shutter, shutterMin, shutterMax, DC1394_FEATURE_SHUTTER);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -597,6 +659,9 @@ int Cdc1394::Initialize()
              sprintf(tmp,"%d",brightness);
              nRet = CreateProperty("Brightness", tmp, MM::Integer, false, pAct);
              assert(nRet == DEVICE_OK);
+             nRet = SetPropertyLimits("Brightness", brightnessMin, brightnessMax);
+             assert(nRet == DEVICE_OK);
+             
           } 
           else if (strcmp(featureLabel, "Gain") == 0) 
           {
@@ -616,6 +681,9 @@ int Cdc1394::Initialize()
              sprintf(tmp,"%d",gain);
              nRet = CreateProperty(MM::g_Keyword_Gain, tmp, MM::Integer, false, pAct);
              assert(nRet == DEVICE_OK);
+             nRet = SetPropertyLimits(MM::g_Keyword_Gain, gainMin, gainMax);
+             assert(nRet == DEVICE_OK);
+             
           }
           else if (strcmp(featureLabel, "Shutter") == 0) 
           {
@@ -636,6 +704,29 @@ int Cdc1394::Initialize()
              sprintf(tmp,"%d",shutter);
              nRet = CreateProperty("Shutter", tmp, MM::Integer, false, pAct);
              assert(nRet == DEVICE_OK);
+             nRet = SetPropertyLimits("Shutter", shutterMin, shutterMax);
+             assert(nRet == DEVICE_OK);
+             
+             // Check if shutter has absolute control
+             dc1394bool_t absolute;
+             absoluteShutterControl=false;
+             err = dc1394_feature_has_absolute_control(camera, DC1394_FEATURE_SHUTTER, &absolute);
+             if(absolute==DC1394_TRUE) absoluteShutterControl=true;
+
+             if(!absoluteShutterControl && camera->vendor_id==AVT_VENDOR_ID){
+                logMsg_.clear();
+                logMsg_ << "Checking AVT absolute shutter\n";
+                LogMessage (logMsg_.str().c_str(), false);
+                // for AVT cameras, check if we have access to the extended shutter mode
+                uint32_t timebase_id;
+                err=dc1394_avt_get_extented_shutter(camera,&timebase_id);
+                if(err==DC1394_SUCCESS) absoluteShutterControl=true;
+             }
+             if(absoluteShutterControl){
+                logMsg_.clear();
+                logMsg_ << "Absolute shutter\n";
+                LogMessage (logMsg_.str().c_str(), false);                
+             }
           }
           else if (strcmp(featureLabel, "Exposure") == 0) 
           {
@@ -915,9 +1006,8 @@ double Cdc1394::GetExposure() const
 
 void Cdc1394::SetExposure(double dExp)
 {
-   // TODO: check if the exposure can be set.  It can't for the iSight:
-   dExp = 30.0;
-   SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(dExp));
+   if(absoluteShutterControl) 
+      SetProperty(MM::g_Keyword_Exposure, CDeviceUtils::ConvertToString(dExp));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1342,4 +1432,172 @@ void Cdc1394::setFrameRateMap()
    frameRateMap.insert (frameRateMapType(DC1394_FRAMERATE_60, " 60 fps"));
    frameRateMap.insert (frameRateMapType(DC1394_FRAMERATE_120, "120 fps"));
    frameRateMap.insert (frameRateMapType(DC1394_FRAMERATE_240, "240 fps"));
+}
+
+/**
+ * Starts continuous acquisition.
+ */
+int Cdc1394::StartSequenceAcquisition(long numImages, double interval_ms)
+{
+   
+   // If we're using the camera in some other way, stop that
+   Cdc1394::StopTransmission();
+   
+   printf("Started camera streaming.\n");
+   if (acquiring_)
+      return ERR_BUSY_ACQUIRING;
+
+   int ret = GetCoreCallback()->PrepareForAcq(this);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   logMsg_.clear();
+   logMsg_ << "Started sequence acquisition: " << numImages << " at " << interval_ms << " ms" << endl;
+   LogMessage(logMsg_.str().c_str());
+
+   imageCounter_ = 0;
+   sequenceLength_ = numImages;
+   //const ACE_Time_Value curr_tv = ACE_OS::gettimeofday ();
+   //ACE_Time_Value interval = ACE_Time_Value (0, (long)(interval_ms * 1000.0));
+   //acqTimer_->schedule (tcb_, &timerArg_, curr_tv + ACE_Time_Value (0, 1000), interval);
+
+   double actualIntervalMs = max(GetExposure(), interval_ms);
+   acqThread_->SetInterval(actualIntervalMs);
+   SetProperty(MM::g_Keyword_ActualInterval_ms, CDeviceUtils::ConvertToString(actualIntervalMs));
+
+   err = dc1394_video_set_multi_shot(camera, numImages, DC1394_ON);
+   if (err != DC1394_SUCCESS) {
+      logMsg_.clear();
+      logMsg_ << "Unable to start multi-shot" << endl;
+      LogMessage(logMsg_.str().c_str());
+      return err;
+   }
+
+   GetBytesPerPixel();
+
+   acqThread_->SetLength(numImages);
+
+   // TODO: check trigger mode, etc..
+
+   acqThread_->Start();
+
+   acquiring_ = true;
+
+   LogMessage("Acquisition thread started");
+
+   return DEVICE_OK;
+}
+
+/**
+ * Stops acquisition
+ */
+int Cdc1394::StopSequenceAcquisition()
+{   
+   printf("Stopped camera streaming.\n");
+   acqThread_->Stop();
+   acquiring_ = false;
+   err = dc1394_video_set_multi_shot(camera, 0, DC1394_OFF);
+   if (err != DC1394_SUCCESS) {
+      logMsg_.clear();
+      logMsg_ << "Unable to stop multi-shot" << endl;
+      LogMessage(logMsg_.str().c_str());
+      return err;
+   }
+   // TODO: the correct termination code needs to be passed here instead of "0"
+   MM::Core* cb = GetCoreCallback();
+   if (cb)
+      cb->AcqFinished(this, 0);
+   return DEVICE_OK;
+}
+
+int Cdc1394::PushImage(dc1394video_frame_t *myframe)
+{
+   logMsg_.clear();
+   logMsg_ << "Pushing image " <<imageCounter_<< endl;
+   LogMessage(logMsg_.str().c_str());
+
+   imageCounter_++;
+   // TODO: call core to finish image snap
+
+   // Fetch current frame
+   // TODO: write a deinterlace in place routine
+   // to avoid unnecessary copying
+   //    uint8_t* pixBuffer = const_cast<unsigned char*> (img_.GetPixels());
+   //  // GJ: Deinterlace image if required
+   //    if (avtInterlaced) avtDeinterlaceMono8 (pixBuffer, (uint8_t*) src, width, height);         
+   // else memcpy (pixBuffer, src, GetImageBufferSize());
+
+   // Copy to img_ ?
+   
+   // process image
+   MM::ImageProcessor* ip = GetCoreCallback()->GetImageProcessor(this);
+   if (ip)
+   {
+      int ret = ip->Process(myframe->image, width, height,bytesPerPixel);
+      if (ret != DEVICE_OK) return ret;
+   }
+
+   // insert image into the circular MMCore buffer
+   return GetCoreCallback()->InsertImage(this, myframe->image,
+                                           width, height, bytesPerPixel);
+}
+
+int AcqSequenceThread::svc(void)
+{
+   long imageCounter(0);
+   dc1394error_t err;                                                         
+   dc1394video_frame_t *myframe;  
+   std::ostringstream logMsg_;
+   
+   do
+   {
+       // wait until the frame becomes available
+      err=dc1394_capture_dequeue(camera_->camera, DC1394_CAPTURE_POLICY_WAIT, &myframe);/* Capture */
+      if(err!=DC1394_SUCCESS)
+      {
+         logMsg_.clear();
+         logMsg_ << "Dequeue failed with code: " <<err ;
+         camera_->LogMessage(logMsg_.str().c_str());
+         camera_->StopSequenceAcquisition();
+         return err; 
+      } else {
+         logMsg_.clear();
+         logMsg_ << "Dequeued image: " << imageCounter <<
+         " with timestamp: " <<myframe->timestamp << 
+         " ring buffer pos: "<<myframe->id <<
+         " frames_behind: "<<myframe->frames_behind<<endl ;
+         camera_->LogMessage(logMsg_.str().c_str());
+      }
+      int ret = camera_->PushImage(myframe);
+      if (ret != DEVICE_OK)
+      {
+         logMsg_.clear();
+         logMsg_ << "PushImage() failed with errorcode: " << ret;
+         camera_->LogMessage(logMsg_.str().c_str());
+         camera_->StopSequenceAcquisition();
+         return 2;
+      }
+      err=dc1394_capture_enqueue(camera_->camera,myframe);/* Capture */
+      if(err!=DC1394_SUCCESS)
+      {
+         logMsg_.clear();
+         logMsg_<< "Failed to enqueue image" <<imageCounter<< endl;
+         camera_->LogMessage(logMsg_.str().c_str());
+
+         camera_->StopSequenceAcquisition();
+         return err; 
+      } 
+      imageCounter++;
+      //printf("Acquired frame %ld.\n", imageCounter);                           
+   } while (!stop_ && imageCounter < numImages_);
+
+   if (stop_)
+   {
+      printf("Acquisition interrupted by the user\n");
+      return 0;
+   }
+
+   camera_->StopSequenceAcquisition();
+   printf("Acquisition completed.\n");
+   return 0;
 }

@@ -116,3 +116,122 @@ int CoreCallback::OnFinished(const MM::Device* /* caller */)
 {
    return DEVICE_OK;
 }
+
+/**
+ * Sends an array of bytes to the port.
+ */
+int CoreCallback::WriteToSerial(const MM::Device* caller, const char* portName, const unsigned char* buf, unsigned long length)
+{
+   MM::Serial* pSerial = 0;
+   try
+   {
+      pSerial = core_->getSpecificDevice<MM::Serial>(portName);
+   }
+   catch (CMMError& err)
+   {
+      return err.getCode();    
+   }
+   catch (...)
+   {
+      return DEVICE_SERIAL_COMMAND_FAILED;
+   }
+
+   // don't allow self reference
+   if (dynamic_cast<MM::Device*>(pSerial) == caller)
+      return DEVICE_SELF_REFERENCE;
+
+   return pSerial->Write(buf, length);
+}
+   
+/**
+  * Reads bytes form the port, up to the buffer length.
+  */
+int CoreCallback::ReadFromSerial(const MM::Device* caller, const char* portName, unsigned char* buf, unsigned long bufLength, unsigned long &bytesRead)
+{
+   MM::Serial* pSerial = 0;
+   try
+   {
+      pSerial = core_->getSpecificDevice<MM::Serial>(portName);
+   }
+   catch (CMMError& err)
+   {
+      return err.getCode();    
+   }
+   catch (...)
+   {
+      return DEVICE_SERIAL_COMMAND_FAILED;
+   }
+
+   // don't allow self reference
+   if (dynamic_cast<MM::Device*>(pSerial) == caller)
+      return DEVICE_SELF_REFERENCE;
+
+   return pSerial->Read(buf, bufLength, bytesRead);
+}
+
+/**
+ * Clears port buffers.
+ */
+int CoreCallback::PurgeSerial(const MM::Device* caller, const char* portName)
+{
+   MM::Serial* pSerial = 0;
+   try
+   {
+      pSerial = core_->getSpecificDevice<MM::Serial>(portName);
+   }
+   catch (CMMError& err)
+   {
+      return err.getCode();    
+   }
+   catch (...)
+   {
+      return DEVICE_SERIAL_COMMAND_FAILED;
+   }
+
+   // don't allow self reference
+   if (dynamic_cast<MM::Device*>(pSerial) == caller)
+      return DEVICE_SELF_REFERENCE;
+
+   return pSerial->Purge();
+}
+
+/**
+ * Sends an ASCII command terminated by the specified character sequence.
+ */
+int CoreCallback::SetSerialCommand(const MM::Device*, const char* portName, const char* command, const char* term)
+{
+   assert(core_);
+   try {
+      core_->setSerialPortCommand(portName, command, term);
+   }
+   catch (...)
+   {
+      // trap all exceptions and return generic serial error
+      return DEVICE_SERIAL_COMMAND_FAILED;
+   }
+   return DEVICE_OK;
+}
+
+/**
+ * Receives an ASCII string terminated by the specified character sequence.
+ * The terminator string is stripped of the answer. If the termination code is not
+ * received within the com port timeout and error will be flagged.
+ */
+int CoreCallback::GetSerialAnswer(const MM::Device*, const char* portName, unsigned long ansLength, char* answerTxt, const char* term)
+{
+   assert(core_);
+   string answer;
+   try {
+      answer = core_->getSerialPortAnswer(portName, term);
+      if (answer.length() >= ansLength)
+         return DEVICE_SERIAL_BUFFER_OVERRUN;
+   }
+   catch (...)
+   {
+      // trap all exceptions and return generic serial error
+      return DEVICE_SERIAL_COMMAND_FAILED;
+   }
+   strcpy(answerTxt, answer.c_str());
+   return DEVICE_OK;
+}
+

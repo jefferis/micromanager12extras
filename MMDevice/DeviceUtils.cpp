@@ -16,7 +16,7 @@
 //                IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
-// CVS:           $Id: DeviceUtils.cpp 1002 2008-03-02 01:51:53Z nico $
+// CVS:           $Id: DeviceUtils.cpp 1209 2008-05-23 05:38:39Z nenad $
 //
 
 #include "DeviceUtils.h"
@@ -81,6 +81,15 @@ const char* CDeviceUtils::ConvertToString(double dVal)
 {
    //return _gcvt(dVal, 12, m_pszBuffer);
    snprintf(m_pszBuffer, MM::MaxStrLength-1, "%.2f", dVal); 
+   return m_pszBuffer;
+}
+
+/**
+ * Convert boolean value to string.
+ */
+const char* CDeviceUtils::ConvertToString(bool val)
+{
+   snprintf(m_pszBuffer, MM::MaxStrLength-1, "%s", val ? "1" : "0"); 
    return m_pszBuffer;
 }
 

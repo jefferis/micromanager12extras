@@ -17,7 +17,7 @@
 //                IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
-// CVS:           $Id: Configuration.h 939 2008-02-08 20:39:50Z nenad $
+// CVS:           $Id: Configuration.h 1187 2008-05-20 23:26:20Z nenad $
 //
 #ifndef _CONFIGURATION_H_
 #define _CONFIGURATION_H_
@@ -45,11 +45,14 @@ struct PropertySetting
     * @param prop
     * @param value 
     */
-   PropertySetting(const char* deviceLabel, const char* prop, const char* value, bool readOnly = false) :
-      deviceLabel_(deviceLabel), propertyName_(prop), value_(value), readOnly_(readOnly) {}
+    PropertySetting(const char* deviceLabel, const char* prop, const char* value, bool readOnly = false) :
+      deviceLabel_(deviceLabel), propertyName_(prop), value_(value), readOnly_(readOnly)
+      {
+        key_ = generateKey(deviceLabel, prop);
+      }
 
-      PropertySetting() : readOnly_(false) {}
-   ~PropertySetting() {}
+    PropertySetting() : readOnly_(false) {}
+    ~PropertySetting() {}
 
    /**
     * Returns the device label.
@@ -67,6 +70,11 @@ struct PropertySetting
     * Returns the property value.
     */
    std::string getPropertyValue() const {return value_;}
+
+   std::string getKey() const {return key_;}
+
+   static std::string generateKey(const char* device, const char* prop);
+
    std::string Serialize() const;
    void Restore(const std::string& data);
    std::string getVerbose() const;
@@ -76,6 +84,7 @@ private:
    std::string deviceLabel_;
    std::string propertyName_;
    std::string value_;
+   std::string key_;
    bool readOnly_;
 };
 
@@ -123,7 +132,7 @@ public:
    /**
     * Adds new property setting to the existing contents.
     */
-   void addSetting(const PropertySetting& setting) {settings_.push_back(setting);}
+   void addSetting(const PropertySetting& setting);
 
    bool isPropertyIncluded(const char* device, const char* property);
    bool isSettingIncluded(const PropertySetting& ps);
@@ -140,6 +149,7 @@ public:
  
 private:
    std::vector<PropertySetting> settings_;
+   std::map<std::string, int> index_;
 };
 
 /**
