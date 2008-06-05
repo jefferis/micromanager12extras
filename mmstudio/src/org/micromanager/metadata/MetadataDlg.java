@@ -20,11 +20,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// HISTORY:       Revised, March 2007, N. Amodaj: Allows writing as well as reading
-//                of micro-manager data files. More comprehensive commands for setting
-//                color and contrast.
-//
-//CVS:            $Id: MetadataDlg.java 1275 2008-06-03 21:31:24Z nenad $
+//CVS:            $Id: MetadataDlg.java 1285 2008-06-05 00:50:55Z nenad $
 
 package org.micromanager.metadata;
 
