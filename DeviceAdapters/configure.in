@@ -155,6 +155,7 @@ else
    TE2000MAKEFILE=
 fi
 AC_SUBST(TE2000)
+AC_SUBST(TE2000MAKEFILE)
 
 # Only build the Nikon AZ100 when the code is there
 AM_CONDITIONAL([BUILD_AZ100],[test -f "NikonAZ100/NikonAZ100.h"])
@@ -166,6 +167,7 @@ else
    AZ100MAKEFILE=
 fi
 AC_SUBST(AZ100)
+AC_SUBST(AZ100MAKEFILE)
 
 # Only build ... when the code is there
 AM_CONDITIONAL([BUILD_TEST],[test -f "Test/Test.h"])
@@ -177,6 +179,7 @@ else
    TESTMAKEFILE=
 fi
 AC_SUBST(TEST)
+AC_SUBST(TESTMAKEFILE)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -261,5 +264,5 @@ AC_CHECK_FUNCS([memset])
 
 
 # AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES(Makefile AOTF/Makefile Andor/Makefile ASIFW1000/Makefile ASIStage/Makefile DAZStage/Makefile DTOpenLayer/Makefile DemoCamera/Makefile DemoStreamingCamera/Makefile SerialManagerUNIX/Makefile USBManager/Makefile Ludl/Makefile LudlLow/Makefile ZeissCAN/Makefile ZeissCAN29/Makefile Vincent/Makefile Conix/Makefile K8055/Makefile K8061/Makefile Hamamatsu/Makefile PVCAM/Makefile Nikon/Makefile $TE2000MAKEFILE $AZ100MAKEFILE ParallelPort/Makefile Pecon/Makefile Sensicam/Makefile StanfordPhotonics/Makefile SpectralLMM5/Makefile SutterLambda/Makefile Prior/Makefile PI/Makefile PI_GCS/Makefile dc1394/Makefile QCam/Makefile Yokogawa/Makefile $TESTMAKEFILE)
+AC_CONFIG_FILES(Makefile AOTF/Makefile Andor/Makefile ASIFW1000/Makefile ASIStage/Makefile DAZStage/Makefile DTOpenLayer/Makefile DemoCamera/Makefile DemoStreamingCamera/Makefile SerialManagerUNIX/Makefile USBManager/Makefile Ludl/Makefile LudlLow/Makefile ZeissCAN/Makefile ZeissCAN29/Makefile Vincent/Makefile Conix/Makefile K8055/Makefile K8061/Makefile Hamamatsu/Makefile PVCAM/Makefile Nikon/Makefile ${TE2000MAKEFILE} ${AZ100MAKEFILE} ParallelPort/Makefile Pecon/Makefile Sensicam/Makefile StanfordPhotonics/Makefile SpectralLMM5/Makefile SutterLambda/Makefile Prior/Makefile PI/Makefile PI_GCS/Makefile dc1394/Makefile QCam/Makefile Yokogawa/Makefile ${TESTMAKEFILE})
 AC_OUTPUT
