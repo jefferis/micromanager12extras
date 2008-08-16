@@ -52,6 +52,7 @@ Source: ..\bin\ACEd.dll; DestDir: {app}\bin
 
 ; MMCore files
 Source: ..\MMCore\MMCore.h; DestDir: {app}\MMCore
+Source: ..\MMCore\Configuration.h; DestDir: {app}\MMCore
 Source: ..\MMCore\PluginManager.h; DestDir: {app}\MMCore
 Source: ..\MMCore\Error.h; DestDir: {app}\MMCore
 Source: ..\MMCore\ErrorCodes.h; DestDir: {app}\MMCore

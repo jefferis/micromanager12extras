@@ -65,7 +65,7 @@ public interface ScriptInterface {
 
    /**
     * Opens a new acquisition context with explicit image physical parameters.
-    * This command will determine the recorded date and time of the acquistion.
+    * This command will determine the recorded date and time of the acquisition.
     * All relative (elapsed) time stamps will be determined with respect to this time.
     * @throws MMScriptException 
     */
@@ -123,6 +123,13 @@ public interface ScriptInterface {
     * Returns after Acquisition finishes
     */
    public void runAcquisition() throws MMScriptException;
+   
+   /**
+    * Executes Acquisition with current settings but allows for changing the data path
+    * Will open the Acquisition Dialog when it is not open yet.
+    * Returns after Acquisition finishes
+    */
+   public void runAcqusition(String name, String root) throws MMScriptException;
 
    /**
     * Loads setting for Acquisition Dialog from file
@@ -172,6 +179,13 @@ public interface ScriptInterface {
    /**
     * Closes Image5D window. 
     */
-   public void closeImage5D(String title) throws MMScriptException;
+   public void closeAcquisitionImage5D(String title) throws MMScriptException;
+   
+   /**
+    * Open empty image acquisition window
+    * @throws MMScriptException
+    */
+   //public void openCompatibleImage5D(String title, int frames, int channels, int slices) throws MMScriptException;
+   
  
 }

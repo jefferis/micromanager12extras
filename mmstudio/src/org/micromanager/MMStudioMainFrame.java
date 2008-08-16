@@ -3,27 +3,30 @@
 //PROJECT:       Micro-Manager
 //SUBSYSTEM:     mmstudio
 //-----------------------------------------------------------------------------
-
+//
 //AUTHOR:       Nenad Amodaj, nenad@amodaj.com, Jul 18, 2005
-
+//
 //COPYRIGHT:    University of California, San Francisco, 2006
-
+//              100X Imaging Inc, www.100ximaging.com, 2008
+//
 //LICENSE:      This file is distributed under the BSD license.
-//License text is included with the source distribution.
+//              License text is included with the source distribution.
+//
+//              This file is distributed in the hope that it will be useful,
+//              but WITHOUT ANY WARRANTY; without even the implied warranty
+//              of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+//
+//              IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+//              CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+//              INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 
-//This file is distributed in the hope that it will be useful,
-//but WITHOUT ANY WARRANTY; without even the implied warranty
-//of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-//IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-//CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-//INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
-
-//CVS:          $Id: MMStudioMainFrame.java 1276 2008-06-03 22:46:17Z nico $
+//CVS:          $Id: MMStudioMainFrame.java 1403 2008-07-14 16:32:52Z nico $
 
 package org.micromanager;
 
 import ij.ImagePlus;
+import ij.ImageJ;
+import ij.IJ;
 import ij.WindowManager;
 import ij.gui.Line;
 import ij.gui.Roi;
@@ -137,7 +140,7 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
    public static String LIVE_WINDOW_TITLE = "AcqWindow";
 
    private static final String MICRO_MANAGER_TITLE = "Micro-Manager 1.2 (beta)";
-   private static final String VERSION = "1.2.17 (beta)";
+   private static final String VERSION = "1.2.32 (beta)";
    private static final long serialVersionUID = 3556500289598574541L;
 
    private static final String MAIN_FRAME_X = "x";
@@ -188,6 +191,7 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
    private GraphFrame profileWin_;
    //private MMScriptFrame scriptFrame_;
    private PropertyEditor propertyBrowser_;
+   private CalibrationListDlg calibrationListDlg_;
    private AcqControlDlg acqControlWin_;
    private final static String DEFAULT_CONFIG_FILE_NAME = "MMConfig_demo.cfg";
    private final static String DEFAULT_SCRIPT_FILE_NAME = "MMStartup.bsh";
@@ -843,6 +847,16 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
       configuratorMenuItem.setText("Hardware Configuration Wizard...");
       toolsMenu.add(configuratorMenuItem);
 
+      final JMenuItem calibrationMenuItem = new JMenuItem();
+      toolsMenu.add(calibrationMenuItem);
+      calibrationMenuItem.addActionListener(new ActionListener() {
+         public void actionPerformed(ActionEvent e) {
+            createCalibrationListDlg();
+         }
+      });
+      calibrationMenuItem.setText("Pixel Size Calibration...");
+      toolsMenu.add(calibrationMenuItem);
+
       final JMenuItem loadSystemConfigMenuItem = new JMenuItem();
       toolsMenu.add(loadSystemConfigMenuItem);
       loadSystemConfigMenuItem.addActionListener(new ActionListener() {
@@ -1355,7 +1369,14 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
    }
 
    private void handleException (Exception e) {
-      String errText = "Exception occurred: " + e.getMessage();
+      String errText = "";
+      if (options_.debugLogEnabled)
+         errText = "Exception occurred: " + e.getMessage();
+      else {
+         errText = "Exception occrred: " + e.toString() + "\n";
+         e.printStackTrace();
+      }
+
       handleError(errText);
    }
 
@@ -1588,6 +1609,7 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
       try {
          model.loadFromFile(sysConfigFile_);
          model.createSetupConfigsFromHardware(core_);
+         model.createResolutionsFromHardware(core_);
          JFileChooser fc = new JFileChooser();
          boolean saveFile = true;
          File f; 
@@ -1783,17 +1805,16 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
       propertyBrowser_.setParentGUI(this);
    }
 
-//   private void createScriptingConsole() {
-//      if (scriptFrame_ == null || !scriptFrame_.isActive()) {
-//         scriptFrame_ = new MMScriptFrame();
-//         scriptFrame_.setVisible(true);
-//         scriptFrame_.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-//         scriptFrame_.insertScriptingObject(SCRIPT_CORE_OBJECT, core_);
-//         scriptFrame_.insertScriptingObject(SCRIPT_ACQENG_OBJECT, engine_);
-//         scriptFrame_.setParentGUI(this);
-//         scriptFrame_.setBackground(guiColors_.background.get((options_.displayBackground)));
-//      }
-//   }
+   private void createCalibrationListDlg() {
+      if (calibrationListDlg_ != null)
+         calibrationListDlg_.dispose();
+
+      calibrationListDlg_ = new CalibrationListDlg(core_, options_);
+      calibrationListDlg_.setVisible(true);
+      calibrationListDlg_.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+      //calibrationListDlg_.setCore(core_);
+      calibrationListDlg_.setParentGUI(this);
+   }
 
    private void createScriptPanel() {
       if (scriptPanel_ == null) {
@@ -1812,7 +1833,8 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
          ", Intensity range: " + core_.getImageBitDepth() + " bits";
          double pixSizeUm = core_.getPixelSizeUm();
          if (pixSizeUm > 0.0)
-            dimText += ", " + TextUtils.FMT2.format(pixSizeUm) + "um/pix";
+            dimText += ", " + TextUtils.FMT0.format(pixSizeUm*1000) + "nm/pix";
+            //dimText += ", " + TextUtils.FMT3.format(pixSizeUm) + "um/pix";
          else
             dimText += ", uncalibrated";
          if (zStageLabel_.length() > 0) {
@@ -1944,11 +1966,14 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
             imageWin_.toFront();
 
             // turn off auto shutter and open the shutter
-            //autoShutterCheckBox_.setEnabled(false);
             autoShutterOrg_ = core_.getAutoShutter();
             if (shutterLabel_.length() > 0)
                shutterOrg_ = core_.getShutterOpen();
             core_.setAutoShutter(false);
+
+            // Hide the autoShutter Checkbox
+            autoShutterCheckBox_.setEnabled(false);
+
             shutterLabel_ = core_.getShutterDevice();
             // only open the shutter when we have one and the Auto shutter checkbox was checked
             if ((shutterLabel_.length() > 0) && autoShutterOrg_)
@@ -1959,7 +1984,9 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
             zWheelListener_.start();
             timer_.start();
             toggleButtonLive_.setText("Stop");
-            toggleButtonShutter_.setEnabled(false);
+            // Only hide the shutter checkbox if we are in autoshuttermode
+            if (autoShutterOrg_)
+               toggleButtonShutter_.setEnabled(false);
             liveRunning_ = true;
          } else {
             if (!timer_.isRunning())
@@ -1978,7 +2005,7 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
             else
                toggleButtonShutter_.setEnabled(true);
             liveRunning_ = false;
-            //autoShutterCheckBox_.setEnabled(autoShutterOrg_);
+            autoShutterCheckBox_.setEnabled(true);
          }
       } catch (Exception err) {
          JOptionPane.showMessageDialog(this, err.getMessage());     
@@ -2244,7 +2271,7 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
          }
 
          // state devices
-         if (updateConfigPadStructure)
+         if (updateConfigPadStructure && (configPad_ != null))
             configPad_.refreshStructure();
 
          // update Channel menus in Multi-dimensional acquisition dialog
@@ -2433,6 +2460,12 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
       dispose();
       if (!runsAsPlugin_)
          System.exit(0);
+      else {
+         ImageJ ij = IJ.getInstance();
+         if (ij != null)
+            ij.quit();
+      }
+
    }
 
    public void applyContrastSettings(ContrastSettings contrast8, ContrastSettings contrast16) {
@@ -2579,6 +2612,11 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
          this.acqControlWin_.updateChannelAndGroupCombo();
    }
 
+   public void setConfigChanged(boolean status) {
+      configChanged_ = status;
+      setConfigSaveButtonStatus(configChanged_);
+   }
+
    /*
     * Changes background color of this window
     */
@@ -2596,8 +2634,6 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
          imageWin_.setBackground(guiColors_.background.get((options_.displayBackground)));
       if (fastAcqWin_ != null)
          fastAcqWin_.setBackground(guiColors_.background.get((options_.displayBackground)));
-//      if (scriptFrame_ != null)
-//         scriptFrame_.setBackground(guiColors_.background.get((options_.displayBackground)));
       if (scriptPanel_ != null)
          scriptPanel_.setBackground(guiColors_.background.get((options_.displayBackground)));
       if (splitView_ != null)
@@ -2733,6 +2769,23 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
       }
    }
    
+   public void runAcqusition(String name, String root) throws MMScriptException {
+      testForAbortRequests();
+      if (acqControlWin_ != null) {
+         acqControlWin_.runAcquisition(name, root);
+         try {
+            while (acqControlWin_.isAcquisitionRunning()) {
+               Thread.sleep(100);
+            }
+         } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+         }
+      } else {
+         throw new MMScriptException("Acquisition window must be open for this command to work.");
+      }
+   }
+   
    public void loadAcquisition(String path) throws MMScriptException {
       testForAbortRequests();
       SwingUtilities.invokeLater(new LoadAcq(path));
@@ -2773,7 +2826,7 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
       
    }
 
-   public void closeImage5D(String title) throws MMScriptException {
+   public void closeAcquisitionImage5D(String title) throws MMScriptException {
       acqMgr_.closeImage5D(title);
    }
 
@@ -2882,6 +2935,7 @@ public class MMStudioMainFrame extends JFrame implements DeviceControlGUI, Scrip
       MMAcquisition acq = acqMgr_.getAcquisition(title);
       acq.setContrastBasedOnFrame(frame, slice);
     }
+
 
 }
 

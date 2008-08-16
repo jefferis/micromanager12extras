@@ -37,7 +37,7 @@
 //
 // FUTURE DEVELOPMENT: From September 1 2007, the development of this adaptor is taken over by Andor Technology plc. Daigang Wen (d.wen@andor.com) is the main contact. Changes made by him will not be labeled.
 //
-// CVS:           $Id: Andor.cpp 1223 2008-05-27 19:34:23Z nico $
+// CVS:           $Id: Andor.cpp 1440 2008-08-01 22:01:50Z nico $
 //
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -1903,6 +1903,7 @@ int Ixon::OnUseSoftwareTrigger(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 	  int ret;
 
+
 	  if(useSoftwareTrigger == "Yes")
 	  {
 		  bSoftwareTriggerSupported = true;
@@ -2491,7 +2492,7 @@ int Ixon::OnOutputAmplifier(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
      SetToIdle();
 
-	 string strAmp;
+      string strAmp;
       pProp->Get(strAmp);
       int AmpIdx = 0;
       if (strAmp.compare(g_OutputAmplifier_EM) == 0)
@@ -2501,13 +2502,15 @@ int Ixon::OnOutputAmplifier(MM::PropertyBase* pProp, MM::ActionType eAct)
       else
          return DEVICE_INVALID_PROPERTY_VALUE;
 
-	  OutputAmplifierIndex_ = AmpIdx;
+	   OutputAmplifierIndex_ = AmpIdx;
+
+     	UpdateHSSpeeds();
 
       unsigned ret = SetOutputAmplifier(AmpIdx);
       if (ret != DRV_SUCCESS)
          return (int)ret;
-
-	  UpdateHSSpeeds();
+      if (initialized_)
+         return OnPropertiesChanged();
 
    }
    else if (eAct == MM::BeforeGet)
@@ -2544,7 +2547,8 @@ int Ixon::OnADChannel(MM::PropertyBase* pProp, MM::ActionType eAct)
          return (int)ret;
 
 	  UpdateHSSpeeds();
-
+     if (initialized_)
+        return OnPropertiesChanged();
    }
    else if (eAct == MM::BeforeGet)
    {
@@ -2576,7 +2580,7 @@ void Ixon::UpdateHSSpeeds()
    }
    SetAllowedValues(MM::g_Keyword_ReadoutMode, readoutModes_);
 
-   if(HSSpeedIdx_ > (int)readoutModes_.size())
+   if(HSSpeedIdx_ >= (int)readoutModes_.size())
    {
 	   HSSpeedIdx_ = 0;
    }
@@ -2608,23 +2612,42 @@ int AcqSequenceThread::svc(void)
    long series(0);
    long seriesInit;
    unsigned ret;
-   long waitTime;
 
-   
+   printf("Starting Andor svc\n");
    DWORD timePrev = GetTickCount();
    ret = GetAcquisitionProgress(&acc, &seriesInit);
+   std::ostringstream os;
+   os << "GetAcquisitionProgress returned: " << acc << " and: " << seriesInit;
+   printf ("%s\n", os.str().c_str());
+   os.str("");
 
    if (ret != DRV_SUCCESS)
    {
       camera_->StopSequenceAcquisition();
-      printf("Error %d\n", ret);
+      os << "Error in GetAcquisitionProgress: " << ret;
+      printf("%s\n", os.str().c_str());
+      //core_->LogMessage(camera_, os.str().c_str(), true);
       return ret;
    }
-   float fExposure, fAccumTime, fKineticTime;
-   GetAcquisitionTimings(&fExposure,&fAccumTime,&fKineticTime);
-   float ActualInterval_ms = fKineticTime * 1000.0f;
 
+   /*
+   float fExposure, fAccumTime, fKineticTime;
+   printf ("Before GetAcquisition timings\n");
+   ret = GetAcquisitionTimings(&fExposure,&fAccumTime,&fKineticTime);
+   if (ret != DRV_SUCCESS)
+      printf ("Error in GetAcquisition Timings\n");
+   os << "Exposure: " << fExposure << " AcummTime: " << fAccumTime << " KineticTime: " << fKineticTime;
+   printf ("%s\n", os.str().c_str());
+   os.str("")
+   float ActualInterval_ms = fKineticTime * 1000.0f;
    waitTime = (long) (ActualInterval_ms / 5);
+
+   os << "WaitTime: " << waitTime;
+   //core_->LogMessage(camera_, os.str().c_str(), true);
+   printf("%s\n", os.str().c_str());
+   os.str("");
+   */
+
    // wait for frames to start coming in
    do
    {
@@ -2632,10 +2655,16 @@ int AcqSequenceThread::svc(void)
       if (ret != DRV_SUCCESS)
       {
          camera_->StopSequenceAcquisition();
-         printf("Error %d\n", ret);
+         os << "Error in GetAcquisitionProgress: " << ret;
+         printf("%s\n", os.str().c_str());
+         os.str("");
          return ret;
       }
-   } while (series == seriesInit);
+      Sleep(waitTime_);
+   } while (series == seriesInit && !stop_);
+   os << "Images appearing";
+   printf("%s\n", os.str().c_str());
+   os.str("");
    long seriesPrev = 0;
    long frmcnt = 0;
    do
@@ -2650,7 +2679,9 @@ int AcqSequenceThread::svc(void)
             int retCode = camera_->PushImage();
             if (retCode != DEVICE_OK)
             {
-               printf("PushImage failed with error code %d\n", retCode);
+               os << "PushImage failed with error code " << retCode;
+               printf("%s\n", os.str().c_str());
+               os.str("");
                //camera_->StopSequenceAcquisition();
                //return ret;
             }
@@ -2661,7 +2692,7 @@ int AcqSequenceThread::svc(void)
             frmcnt++;
             timePrev = GetTickCount();
          }
-         Sleep(waitTime);
+         Sleep(waitTime_);
       }
    }
    //while (ret == DRV_SUCCESS && series < numImages_ && !stop_);
@@ -2670,24 +2701,27 @@ int AcqSequenceThread::svc(void)
    if (ret != DRV_SUCCESS && series != 0)
    {
       camera_->StopSequenceAcquisition();
-      printf("Error %d\n", ret);
+      os << "Error: " << ret;
+      printf("%s\n", os.str().c_str());
+      os.str("");
       return ret;
    }
 
    if (stop_)
    {
-      printf("Acquisition interrupted by the user!\n");
+      printf ("Acquisition interrupted by the user!\n");
       return 0;
    }
   
    if ((series-seriesInit) == numImages_)
    {
-      printf("Done!\n");
+      printf("Did not get the intended number of images\n");
       camera_->StopSequenceAcquisition();
       return 0;
    }
    
-   printf("series: %ld, serieInit: %ld, numImages: %ld\n", series, seriesInit, numImages_);
+   os << "series: " << series << " seriesInit: " << seriesInit << " numImages: "<< numImages_;
+   printf("%s\n", os.str().c_str());
    camera_->StopSequenceAcquisition();
    return 3; // we can get here if we are not fast enough.  Report?  
 }
@@ -2704,26 +2738,29 @@ int Ixon::StartSequenceAcquisition(long numImages, double interval_ms)
    {
      SetToIdle();
    }
+   LogMessage("Setting Trigger Mode", true);
    int ret0 = SetTriggerMode(0);  //set software trigger. mode 0:internal, 1: ext, 6:ext start, 7:bulb, 10:software
    if (ret0 != DRV_SUCCESS)
       return ret0;
 
+   LogMessage("Setting Frame Transfer mode on", true);
    if(bFrameTransfer_ && bSoftwareTriggerSupported)
      ret0 = SetFrameTransferMode(1);  //FT mode might be turned off in SnapImage when Software trigger mode is used. Resume it here
 
-
    ostringstream os;
-   os << "Started sequnce acquisition: " << numImages << " at " << interval_ms << " ms" << endl;
+   os << "Started sequence acquisition: " << numImages << "images  at " << interval_ms << " ms" << endl;
    LogMessage(os.str().c_str());
 
    // prepare the camera
    int ret = SetAcquisitionMode(5); // run till abort
    if (ret != DRV_SUCCESS)
       return ret;
+   LogMessage("Set acquisition mode to 5", true);
 
    ret = SetReadMode(4); // image mode
    if (ret != DRV_SUCCESS)
       return ret;
+   LogMessage("Set Read Mode to 4", true);
 
    // set AD-channel to 14-bit
 //   ret = SetADChannel(0);
@@ -2732,12 +2769,14 @@ int Ixon::StartSequenceAcquisition(long numImages, double interval_ms)
 
    SetExposureTime((float) (expMs_/1000.0));
 
+   LogMessage ("Set Exposure time", true);
    ret = SetNumberAccumulations(1);
    if (ret != DRV_SUCCESS)
    {
       SetAcquisitionMode(1);
       return ret;
    }
+   LogMessage("Set Number of accumulations to 1", true);
 
    ret = SetKineticCycleTime((float)(interval_ms / 1000.0));
    if (ret != DRV_SUCCESS)
@@ -2745,6 +2784,7 @@ int Ixon::StartSequenceAcquisition(long numImages, double interval_ms)
       SetAcquisitionMode(1);
       return ret;
    }
+   LogMessage("Set Kinetic cycle time", true);
 
    long size;
    ret = GetSizeOfCircularBuffer(&size);
@@ -2753,6 +2793,7 @@ int Ixon::StartSequenceAcquisition(long numImages, double interval_ms)
       SetAcquisitionMode(1);
       return ret;
    }
+   LogMessage("Get Size of circular Buffer", true);
 
    // re-apply the frame transfer mode setting
    char ftMode[MM::MaxStrLength];
@@ -2765,6 +2806,9 @@ int Ixon::StartSequenceAcquisition(long numImages, double interval_ms)
       modeIdx = 0;
    else
       return DEVICE_INVALID_PROPERTY_VALUE;
+   os.str("");
+   os << "Set Frame transfer mode to " << modeIdx;
+   LogMessage(os.str().c_str(), true);
 
    ret = SetFrameTransferMode(modeIdx);
    if (ret != DRV_SUCCESS)
@@ -2777,13 +2821,20 @@ int Ixon::StartSequenceAcquisition(long numImages, double interval_ms)
    imageCounter_ = 0;
    sequenceLength_ = numImages;
 
+   os.str("");
+   os << "Setting thread length to " << numImages << " Images";
+   LogMessage(os.str().c_str(), true);
    seqThread_->SetLength(numImages);
 
    float fExposure, fAccumTime, fKineticTime;
    GetAcquisitionTimings(&fExposure,&fAccumTime,&fKineticTime);
    SetProperty(MM::g_Keyword_ActualInterval_ms, CDeviceUtils::ConvertToString((double)fKineticTime * 1000.0)); 
    ActualInterval_ms_ = fKineticTime * 1000.0f;
-
+   os.str("");
+   os << "Exposure: " << fExposure << " AcummTime: " << fAccumTime << " KineticTime: " << fKineticTime;
+   LogMessage(os.str().c_str());
+   float ActualInterval_ms = fKineticTime * 1000.0f;
+   seqThread_->SetWaitTime((long) (ActualInterval_ms / 5));
 
    // prepare the core
    ret = GetCoreCallback()->PrepareForAcq(this);
@@ -2793,7 +2844,8 @@ int Ixon::StartSequenceAcquisition(long numImages, double interval_ms)
       return ret;
    }
 
-   ret = StartAcquisition();
+   LogMessage("Starting acquisition in the camera", true);
+   ret = ::StartAcquisition();
    seqThread_->Start();
 
    acquiring_ = true;

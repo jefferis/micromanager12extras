@@ -19,7 +19,7 @@
 //               CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //               INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:          $Id: MicroscopeModel.java 1169 2008-05-13 05:59:58Z nico $
+// CVS:          $Id: MicroscopeModel.java 1356 2008-06-30 18:44:15Z nico $
 //
 
 package org.micromanager.conf;
@@ -394,6 +394,27 @@ public class MicroscopeModel {
       // first clear all setup data
       pixelSizeGroup_ = new ConfigGroup(PIXEL_SIZE_GROUP);
       
+      try {
+            StrVector pixelSizeConfigs = core.getAvailablePixelSizeConfigs();
+            for (int j=0; j<pixelSizeConfigs.size(); j++) {
+               Configuration pcfg;
+               pcfg = core.getPixelSizeConfigData(pixelSizeConfigs.get(j));
+               ConfigPreset p = new ConfigPreset(pixelSizeConfigs.get(j));
+               p.setPixelSizeUm(core.getPixelSizeUm(pixelSizeConfigs.get(j)));
+               for (int k=0; k<pcfg.size(); k++) {
+                  PropertySetting ps = pcfg.getSetting(k);
+                  Setting s = new Setting(ps.getDeviceLabel(), ps.getPropertyName(), ps.getPropertyValue());
+                  p.addSetting(s);
+               }
+               pixelSizeGroup_.addConfigPreset(p);
+            }
+            //configGroups_.put(PIXEL_SIZE_GROUP, pixelSizeGroup_);
+            modified_ = true;
+      } catch (Exception e) {
+         throw new MMConfigFileException(e);
+      }
+   }
+
       // get current preset info
 //      try {
 //            StrVector presets = core.getAvailableConfigs(curGroups.get(i));
@@ -413,7 +434,6 @@ public class MicroscopeModel {
 //      } catch (Exception e) {
 //         throw new MMConfigFileException(e);
 //      }
-   }
    
    
    public void applyDelaysToHardware(CMMCore core) throws Exception {

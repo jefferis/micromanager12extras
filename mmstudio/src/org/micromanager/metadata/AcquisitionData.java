@@ -24,7 +24,7 @@
 //                of micro-manager data files. More comprehensive commands for setting
 //                color and contrast.
 //
-//CVS:            $Id: AcquisitionData.java 1272 2008-06-03 18:00:13Z nenad $
+//CVS:            $Id: AcquisitionData.java 1390 2008-07-11 22:35:10Z nenad $
 
 
 package org.micromanager.metadata;
@@ -1129,6 +1129,7 @@ public class AcquisitionData {
       }
 
       basePath_ = null;
+      name_ = "in-memory";
       images_ = new Hashtable<String, ImageProcessor>();
    }
 
@@ -1222,15 +1223,15 @@ public class AcquisitionData {
       if (frame <0 || channel < 0 || channel >= channels_ || slice < 0 || slice >= slices_)
          throw new MMAcqDataException("Invalid image coordinates (frame,channel,slice): " + frame + "," + channel + "," + slice);
       
-      // increase frame count if necessary
-      if (frame >= frames_) {
-         frames_ = frame + 1;
-      }
-
       String fname = ImageKey.generateFileName(frame, channelNames_[channel], slice);
       String frameKey = ImageKey.generateFrameKey(frame, channel, slice);
 
       try {
+         // increase frame count if necessary
+         if (frame >= frames_) {
+            frames_ = frame + 1;
+            summary_.put(SummaryKeys.NUM_FRAMES, frames_);
+         }
          JSONObject frameData = new JSONObject();
          frameData.put(ImagePropertyKeys.FILE, fname);
          frameData.put(ImagePropertyKeys.FRAME, frame);

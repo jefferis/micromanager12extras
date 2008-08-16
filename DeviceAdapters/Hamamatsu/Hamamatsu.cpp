@@ -24,7 +24,7 @@
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 08/24/2005, contributions by Nico Stuurman
 // NOTES:    
 //
-// CVS:           $Id: Hamamatsu.cpp 1212 2008-05-23 22:06:14Z nico $
+// CVS:           $Id: Hamamatsu.cpp 1441 2008-08-01 22:24:08Z nico $
 //
 #ifdef WIN32
    #define WIN32_LEAN_AND_MEAN
@@ -521,6 +521,34 @@ int CHamamatsu::OnPhotonImagingMode(MM::PropertyBase* pProp, MM::ActionType eAct
    return DEVICE_OK;
 }
 
+// Output Trigger Polarity
+int CHamamatsu::OnOutputTriggerPolarity(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::AfterSet)
+   {
+      double mode;
+      pProp->Get(mode);
+      // Not sure if we need to shut down the image buffer
+      int ret = ShutdownImageBuffer();
+      if (ret != DEVICE_OK)
+         return ret;
+      if (!dcam_setpropertyvalue(m_hDCAM, DCAM_IDPROP_OUTPUTTRIGGER_POLARITY, mode))
+         return dcam_getlasterror(m_hDCAM, NULL, 0);
+
+      ret = ResizeImageBuffer();
+      if (ret != DEVICE_OK)
+         return ret;
+   }
+   else if (eAct == MM::BeforeGet)
+   {
+      double polarity;
+      if (!dcam_getpropertyvalue(m_hDCAM, DCAM_IDPROP_OUTPUTTRIGGER_POLARITY, &polarity))
+         return dcam_getlasterror(m_hDCAM, NULL, 0);
+      pProp->Set(polarity);
+   }
+   return DEVICE_OK;
+}
+
 // ReadoutTime
 int CHamamatsu::OnReadoutTime(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
@@ -914,6 +942,20 @@ int CHamamatsu::Initialize()
       if (nRet != DEVICE_OK)
          return nRet;
       nRet = SetAllowedPropValues(propAttr, "PhotonImagingMode");
+      if (nRet != DEVICE_OK)
+         return nRet;
+   }
+
+   // Output Trigger polarity
+   if (IsPropertySupported(propAttr, DCAM_IDPROP_OUTPUTTRIGGER_POLARITY))
+   {
+      ostringstream defaultValue;
+      defaultValue << propAttr.valuedefault;
+      pAct = new CPropertyAction (this, &CHamamatsu::OnOutputTriggerPolarity);
+      nRet = CreateProperty("OutputTriggerPolarity", defaultValue.str().c_str(), MM::Integer, false, pAct);
+      if (nRet != DEVICE_OK)
+         return nRet;
+      nRet = SetAllowedPropValues(propAttr, "OutputTriggerPolarity");
       if (nRet != DEVICE_OK)
          return nRet;
    }

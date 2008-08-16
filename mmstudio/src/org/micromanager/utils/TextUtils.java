@@ -19,7 +19,7 @@
 //               CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //               INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:          $Id: TextUtils.java 301 2007-06-28 02:53:24Z nenad $
+// CVS:          $Id: TextUtils.java 1356 2008-06-30 18:44:15Z nico $
 //
 package org.micromanager.utils;
 
@@ -44,6 +44,9 @@ public class TextUtils {
       return sb.toString();
    }
    
+   public static final DecimalFormat FMT0 = new DecimalFormat("#0");
+   public static final DecimalFormat FMT1 = new DecimalFormat("#0.0");
    public static final DecimalFormat FMT2 = new DecimalFormat("#0.00");
+   public static final DecimalFormat FMT3 = new DecimalFormat("#0.000");
 
 }

@@ -18,7 +18,7 @@
 //
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 06/01/2006
 //
-// CVS:           $Id: Prior.cpp 1242 2008-05-30 05:29:24Z nico $
+// CVS:           $Id: Prior.cpp 1338 2008-06-23 02:38:51Z nico $
 //
 
 #ifdef WIN32
@@ -548,6 +548,21 @@ int Wheel::Initialize()
    if (ret != DEVICE_OK)
       return ret;
 
+   // Set timer for Busy signal
+   changedTime_ = GetCurrentMMTime();
+
+   // block/wait for acknowledge, or until we time out;
+   string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", answer);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   if (answer.substr(0, 1).compare("E") == 0 && answer.length() > 2)
+   {
+      int errNo = atoi(answer.substr(2).c_str());
+      return ERR_OFFSET + errNo;
+   }
+
    ret = UpdateStatus();
    if (ret != DEVICE_OK)
       return ret;
@@ -702,7 +717,12 @@ XYStage::XYStage() :
    port_("Undefined"), 
    stepSizeXUm_(0.0), 
    stepSizeYUm_(0.0), 
-   answerTimeoutMs_(1000)
+   answerTimeoutMs_(1000),
+   originX_(0),
+   originY_(0),
+   mirrorX_(false),
+   mirrorY_(false)
+
 {
    InitializeDefaultErrorMessages();
 
@@ -710,7 +730,7 @@ XYStage::XYStage() :
    // ------------------------------------
 
    // Name
-   CreateProperty(MM::g_Keyword_Name, g_XYStageDeviceName, MM::String, true);
+   //CreateProperty(MM::g_Keyword_Name, g_XYStageDeviceName, MM::String, true);
 
    // Description
    CreateProperty(MM::g_Keyword_Description, "Prior XY stage driver adapter", MM::String, true);
@@ -725,9 +745,9 @@ XYStage::~XYStage()
    Shutdown();
 }
 
-void XYStage::GetName(char* Name) const
+void XYStage::GetName(char* name) const
 {
-   CDeviceUtils::CopyLimitedString(Name, g_XYStageDeviceName);
+   CDeviceUtils::CopyLimitedString(name, g_XYStageDeviceName);
 }
 
 int XYStage::Initialize()
@@ -771,6 +791,16 @@ int XYStage::Initialize()
    CreateProperty("StepSizeX_um", "0.0", MM::Float, true, pAct);
    pAct = new CPropertyAction (this, &XYStage::OnStepSizeY);
    CreateProperty("StepSizeY_um", "0.0", MM::Float, true, pAct);
+
+   // Directionality
+   pAct = new CPropertyAction (this, &XYStage::OnMirrorX);
+   CreateProperty("MirrorX", "0", MM::Integer, false, pAct);
+   AddAllowedValue("MirrorX", "0");
+   AddAllowedValue("MirrorX", "1");
+   pAct = new CPropertyAction (this, &XYStage::OnMirrorY);
+   CreateProperty("MirrorY", "0", MM::Integer, false, pAct);
+   AddAllowedValue("MirrorY", "0");
+   AddAllowedValue("MirrorY", "1");
 
    ret = UpdateStatus();
    if (ret != DEVICE_OK)
@@ -826,8 +856,18 @@ bool XYStage::Busy()
 
 int XYStage::SetPositionUm(double x, double y)
 {
-   long xSteps = (long) (x / stepSizeXUm_ + 0.5);
-   long ySteps = (long) (y / stepSizeYUm_ + 0.5);
+   long xSteps = 0;
+   long ySteps = 0;
+
+   if (mirrorX_)
+      xSteps = (long) ((originX_ - x) / stepSizeXUm_ + 0.5);
+   else
+      xSteps = (long) ((originX_ + x) / stepSizeXUm_ + 0.5);
+
+   if (mirrorY_)
+      ySteps = (long) ((originY_ - y) / stepSizeYUm_ + 0.5);
+   else
+      ySteps = (long) ((originY_ + y) / stepSizeYUm_ + 0.5);
    
    return SetPositionSteps(xSteps, ySteps);
 }
@@ -835,7 +875,11 @@ int XYStage::SetPositionUm(double x, double y)
 int XYStage::SetRelativePositionUm(double x, double y)
 {
    long xSteps = (long) (x / stepSizeXUm_ + 0.5);
+   if (mirrorX_)
+      xSteps = -xSteps;
    long ySteps = (long) (y / stepSizeYUm_ + 0.5);
+   if (mirrorY_)
+      ySteps = -ySteps;
    
    return SetRelativePositionSteps(xSteps, ySteps);
 }
@@ -847,12 +891,19 @@ int XYStage::GetPositionUm(double& x, double& y)
    if (ret != DEVICE_OK)
       return ret;
 
-   x = xSteps * stepSizeXUm_;
-   y = ySteps * stepSizeYUm_;
+   if (mirrorX_)
+      x = originX_ - (xSteps * stepSizeXUm_);
+   else 
+      x = originX_ + (xSteps * stepSizeXUm_);
+
+   if (mirrorY_)
+      y = originY_ - (ySteps * stepSizeYUm_);
+   else 
+      y = originY_ + (ySteps * stepSizeYUm_);
 
    return DEVICE_OK;
 }
-  
+ 
 int XYStage::SetPositionSteps(long x, long y)
 {
    // First Clear serial port from previous stuff
@@ -930,6 +981,32 @@ int XYStage::GetPositionSteps(long& x, long& y)
    return GetPositionStepsSingle('Y', y);
 }
 
+/**
+ * Defines current position as origin (0,0) coordinate of our coordinate system
+ * Get the current (stage-native) XY position
+ * This is going to be the origin in our coordinate system
+ */
+int XYStage::SetAdapterOrigin()
+{
+   return SetAdapterOrigin(0.0, 0.0);
+}
+
+/**
+ * Defines position x,y (relative to current position) as the origin of our coordinate system
+ * Get the current (stage-native) XY position
+ */
+int XYStage::SetAdapterOrigin(double x, double y)
+{
+   long xStep, yStep;
+   int ret = GetPositionSteps(xStep, yStep);
+   if (ret != DEVICE_OK)                                                     
+      return ret;                                                            
+   originX_ = (xStep * stepSizeXUm_) + x;                                           
+   originY_ = (yStep * stepSizeYUm_) + y;                                           
+                                                                             
+   return DEVICE_OK;                                                         
+}                                                                            
+ 
 int XYStage::Home()
 {
    // First Clear serial port from previous stuff
@@ -1097,6 +1174,7 @@ int XYStage::OnStepSizeX(MM::PropertyBase* pProp, MM::ActionType eAct)
 
    return DEVICE_OK;
 }
+
 int XYStage::OnStepSizeY(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    if (eAct == MM::BeforeGet)
@@ -1104,6 +1182,46 @@ int XYStage::OnStepSizeY(MM::PropertyBase* pProp, MM::ActionType eAct)
       pProp->Set(stepSizeYUm_);
    }
 
+   return DEVICE_OK;
+}
+
+int XYStage::OnMirrorX(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      if (mirrorX_)
+         pProp->Set("1");
+      else
+         pProp->Set("0");
+   } else if (eAct == MM::AfterSet) {
+      long mirrorX;
+      pProp->Get(mirrorX);
+
+      if (mirrorX == 1)
+         mirrorX_ = true;
+      else
+         mirrorX_ = false;
+   }
+   return DEVICE_OK;
+}
+
+int XYStage::OnMirrorY(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      if (mirrorY_)
+         pProp->Set("1");
+      else
+         pProp->Set("0");
+   } else if (eAct == MM::AfterSet) {
+      long mirrorY;
+      pProp->Get(mirrorY);
+
+      if (mirrorY == 1)
+         mirrorY_ = true;
+      else
+         mirrorY_ = false;
+   }
    return DEVICE_OK;
 }
 

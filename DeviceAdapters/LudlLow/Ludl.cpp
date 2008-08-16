@@ -259,6 +259,8 @@ int Hub::Initialize()
       ret = changeCommandLevel(*this,  *GetCoreCallback(), g_CommandLevelHigh);
       if (ret != DEVICE_OK)
          return ret;
+   }
+   if (result.length() < 2 || result[1]=='N') {
       // try getting version again (TODO: refactor this!)
       // Version of the controller:
       const char* cm = "VER";
@@ -300,6 +302,24 @@ int Hub::Initialize()
       return ret;
 
    // Get description of attached modules
+   /*
+   WriteToComPort(port_.c_str(), (unsigned char*) "R", 1);
+   CDeviceUtils::SleepMs(200);
+   WriteToComPort(port_.c_str(), (unsigned char*) "c", 1);
+   CDeviceUtils::SleepMs(200);
+   WriteToComPort(port_.c_str(), (unsigned char*)"o", 1);
+   CDeviceUtils::SleepMs(200);
+   WriteToComPort(port_.c_str(), (unsigned char*) "n", 1);
+   CDeviceUtils::SleepMs(200);
+   WriteToComPort(port_.c_str(), (unsigned char*) "f", 1);
+   CDeviceUtils::SleepMs(200);
+   WriteToComPort(port_.c_str(), (unsigned char*) "i", 1);
+   CDeviceUtils::SleepMs(200);
+   WriteToComPort(port_.c_str(), (unsigned char*) "g", 1);
+   CDeviceUtils::SleepMs(200);
+   WriteToComPort(port_.c_str(), (unsigned char*) "\r", 1);
+   CDeviceUtils::SleepMs(200);
+   
    const char* cmd = "Rconfig";
    ret = SendSerialCommand(port_.c_str(), cmd, "\r");
    if (ret != DEVICE_OK) 
@@ -332,7 +352,7 @@ int Hub::Initialize()
    ret = GetSerialAnswer(port_.c_str(), "\n", result);
    if (ret != DEVICE_OK) 
       return ret;
-   
+  */ 
    // switch controller back to low level command mode
    ret = changeCommandLevel(*this,  *GetCoreCallback(), g_CommandLevelLow);
    if (ret != DEVICE_OK)
@@ -1077,11 +1097,11 @@ int Shutter::GetShutterPosition(bool& state)
       return DEVICE_SERIAL_INVALID_RESPONSE;
 
    if (shutterNumber_ == 1)
-      state = reply & 4;
+      state = (reply & 4) != 0;
    else if (shutterNumber_ == 2)
-      state = reply & 8;
+      state =  (reply & 8) != 0;
    else if (shutterNumber_ == 3)
-      state = reply & 16;
+      state = (reply & 16) != 0;
 
    return DEVICE_OK;
 }

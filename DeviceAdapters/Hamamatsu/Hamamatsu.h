@@ -23,7 +23,7 @@
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.  
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 08/24/2005, contributions by Nico Stuurman
 //
-// CVS:           $Id: Hamamatsu.h 1212 2008-05-23 22:06:14Z nico $
+// CVS:           $Id: Hamamatsu.h 1441 2008-08-01 22:24:08Z nico $
 //
 #ifndef _HAMAMATSU_H_
 #define _HAMAMATSU_H_
@@ -118,6 +118,7 @@ public:
    int OnScanMode(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnCCDMode(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnPhotonImagingMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnOutputTriggerPolarity(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnSlot(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnGamma(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnTemperature(MM::PropertyBase* pProp, MM::ActionType eAct);

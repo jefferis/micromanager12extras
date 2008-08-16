@@ -19,7 +19,7 @@
 //               CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //               INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:          $Id: AcqControlDlg.java 1208 2008-05-23 00:39:38Z nenad $
+// CVS:          $Id: AcqControlDlg.java 1396 2008-07-12 19:51:30Z nico $
 
 package org.micromanager;
 
@@ -80,6 +80,7 @@ import org.micromanager.api.AcquisitionEngine;
 import org.micromanager.api.Autofocus;
 import org.micromanager.api.DeviceControlGUI;
 
+import org.micromanager.metadata.MMAcqDataException;
 import org.micromanager.utils.ChannelSpec;
 import org.micromanager.utils.ColorEditor;
 import org.micromanager.utils.ColorRenderer;
@@ -296,8 +297,8 @@ public class AcqControlDlg extends JDialog implements PropertyChangeListener {
       public void addNewChannel() {
          ChannelSpec channel = new ChannelSpec();
          if (acqEng_.getChannelConfigs().length > 0) {
-            channel.config_ = acqEng_.getChannelConfigs()[0];
-            channels_.add(channel);
+             channel.config_ = acqEng_.getChannelConfigs()[0];
+             channels_.add(channel);
          }
       }
 
@@ -585,15 +586,10 @@ public class AcqControlDlg extends JDialog implements PropertyChangeListener {
       addButton.setFont(new Font("Arial", Font.PLAIN, 10));
       addButton.addActionListener(new ActionListener() {
          public void actionPerformed(ActionEvent e) {
-            //AddChannelDlg dlg = new AddChannelDlg();
-            //dlg.setData(acqEng_.getConfigurations(), 10.0, 0.0);
-            //dlg.setVisible(true);
-            //if (dlg.isOK()) {
             model_.addNewChannel();
             model_.fireTableStructureChanged();
             // update summary
             summaryTextArea_.setText(acqEng_.getVerboseSummary());
-            //}
          }
       });
       addButton.setText("New");
@@ -868,13 +864,19 @@ public class AcqControlDlg extends JDialog implements PropertyChangeListener {
       zValCombo_.setBounds(85, 228, 110, 22);
       getContentPane().add(zValCombo_);
 
+      JScrollPane commentScrollPane = new JScrollPane();
+      commentScrollPane.setBounds(91, 505, 354, 62);
+      getContentPane().add(commentScrollPane);
+
       commentTextArea_ = new JTextArea();
       commentTextArea_.setFont(new Font("", Font.PLAIN, 10));
       commentTextArea_.setToolTipText("Comment for the current acquistion");
       commentTextArea_.setWrapStyleWord(true);
       commentTextArea_.setBorder(new EtchedBorder(EtchedBorder.LOWERED));
-      commentTextArea_.setBounds(91, 505, 354, 62);
-      getContentPane().add(commentTextArea_);
+      //commentTextArea_.setBounds(91, 505, 354, 62);
+      //getContentPane().add(commentTextArea_);
+      commentScrollPane.setViewportView(commentTextArea_);
+
 
       JLabel directoryPrefixLabel_2 = new JLabel();
       directoryPrefixLabel_2.setFont(new Font("Arial", Font.PLAIN, 10));
@@ -1062,9 +1064,18 @@ public class AcqControlDlg extends JDialog implements PropertyChangeListener {
       af.showOptionsDialog();
    }
 
+   public boolean inArray(String member, String[] group) {
+	   for (int i=0; i<group.length; i++)
+		   if (member.equals(group[i]))
+			   return true;
+	   return false;
+   }
+   
    public void updateGroupsCombo() {
       String groups[] = acqEng_.getAvailableGroups();
       channelGroupCombo_.setModel(new DefaultComboBoxModel(groups));
+      if (!inArray(acqEng_.getChannelGroup(), groups))
+    	  acqEng_.setChannelGroup(groups[0]);
       channelGroupCombo_.setSelectedItem(acqEng_.getChannelGroup());
    }
 
@@ -1072,7 +1083,7 @@ public class AcqControlDlg extends JDialog implements PropertyChangeListener {
       updateGroupsCombo();
       model_.cleanUpConfigurationList();
    }
-
+   
    public void loadAcqSettings() {
       // load acquisition engine preferences
       acqEng_.clear();
@@ -1321,7 +1332,31 @@ public class AcqControlDlg extends JDialog implements PropertyChangeListener {
       try {
          applySettings();
          acqEng_.acquire();
+      }  catch (MMAcqDataException e) {
+         handleException(e);
+         return;
       } catch(MMException e) {
+         handleException(e);
+         return;
+      }
+   }
+   
+   public void runAcquisition(String acqName, String acqRoot) {
+      if (acqEng_.isAcquisitionRunning()) {
+         JOptionPane.showMessageDialog(this, "Unable to start the new acquisition task: previous acquisition still in progress.");
+         return;
+      }
+
+      try {
+         applySettings();
+         acqEng_.setDirName(acqName);
+         acqEng_.setRootName(acqRoot);
+         acqEng_.setSaveFiles(true);
+         acqEng_.acquire();
+      } catch(MMException e) {
+         handleException(e);
+         return;
+      } catch (MMAcqDataException e) {
          handleException(e);
          return;
       }

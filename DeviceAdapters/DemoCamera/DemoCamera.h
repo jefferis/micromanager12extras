@@ -23,7 +23,7 @@
 //                CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 //
-// CVS:           $Id: DemoCamera.h 1081 2008-04-01 05:01:35Z nico $
+// CVS:           $Id: DemoCamera.h 1355 2008-06-30 18:43:30Z nico $
 //
 
 #ifndef _DEMOCAMERA_H_
@@ -193,6 +193,39 @@ private:
    long numPos_;
    bool busy_;
    bool initialized_;
+   long position_;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+// CDemoStateDevice class
+// Simulation of a state device in which the number of states can be specified (state device)
+//////////////////////////////////////////////////////////////////////////////
+
+class CDemoStateDevice : public CStateDeviceBase<CDemoStateDevice>
+{
+public:
+   CDemoStateDevice();
+   ~CDemoStateDevice();
+  
+   // MMDevice API
+   // ------------
+   int Initialize();
+   int Shutdown();
+  
+   void GetName(char* pszName) const;
+   bool Busy();
+   unsigned long GetNumberOfPositions()const {return numPos_;}
+
+   // action interface
+   // ----------------
+   int OnState(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnNumberOfStates(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+private:
+   long numPos_;
+   bool busy_;
+   bool initialized_;
+   MM::MMTime changedTime_;
    long position_;
 };
 

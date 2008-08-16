@@ -19,7 +19,7 @@
 //                INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 // AUTHOR:        Nenad Amodaj, nenad@amodaj.com, 09/01/2005
 //
-// CVS:           $Id: ParallelPort.h 2 2007-02-27 23:33:17Z nenad $
+// CVS:           $Id: ParallelPort.h 1364 2008-07-03 04:53:12Z nico $
 //
 
 #ifndef _PARALLELPORT_H_
@@ -71,6 +71,43 @@ private:
    bool initialized_;
    bool busy_;
    long numPos_;
+};
+
+class CParallelPortShutter : public CShutterBase<CParallelPortShutter>  
+{
+public:
+   CParallelPortShutter();
+   ~CParallelPortShutter();
+  
+   // MMDevice API
+   // ------------
+   int Initialize();
+   int Shutdown();
+  
+   void GetName(char* pszName) const;
+   bool Busy() {return busy_;}
+   
+   unsigned long GetNumberOfPositions()const {return numPos_;}
+
+   // Shutter API
+   int SetOpen(bool open = true);
+   int GetOpen(bool& open);
+   int Fire(double deltaT);
+
+   // action interface
+   // ----------------
+   int OnSwitchState(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+private:
+   int OpenPort(const char* pszName, long lnValue);
+   int WriteToPort(long lnValue);
+   int ClosePort();
+
+   bool initialized_;
+   bool busy_;
+   long numPos_;
+   long switch_;
+   bool open_;
 };
 
 #endif //_PARALLELPORT_H_

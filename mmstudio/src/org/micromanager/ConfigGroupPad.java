@@ -19,7 +19,7 @@
 //CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
 
-//CVS:          $Id: ConfigGroupPad.java 1190 2008-05-21 04:16:09Z nico $
+//CVS:          $Id: ConfigGroupPad.java 1381 2008-07-09 22:54:31Z nico $
 
 package org.micromanager;
 
@@ -137,9 +137,11 @@ public class ConfigGroupPad extends JScrollPane{
    }
 
    public void refreshStructure() {
-      data_.updateStatus();
-      data_.fireTableStructureChanged();
-      table_.repaint();
+	  if (data_ != null) { 
+         data_.updateStatus();
+         data_.fireTableStructureChanged();
+         table_.repaint();
+	  }
    }
 
    public boolean addGroup() {

@@ -8,5 +8,9 @@ Ludl_la_LDFLAGS = -module
 install:
 	cp .libs/Ludl.so $(IJPATH)/$(MMPREFIX)Ludl
 
+install-strip:
+	cp .libs/Ludl.so $(IJPATH)/$(MMPREFIX)Ludl
+	strip -x (IJPATH)/$(MMPREFIX)Ludl
+
 ##EXTRA_DIST = Ludl_vc8.vcproj Ludl.vcproj license.txt
 EXTRA_DIST = license.txt

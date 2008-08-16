@@ -57,7 +57,7 @@ DAZStage::DAZStage() :
    minDAVolt_ (0.0),
    maxDAVolt_ (10.0),
    minStageVolt_ (0.0),
-   maxStageVolt_ (5.0),
+   maxStageVolt_ (10.0),
    minStagePos_ (0.0),
    maxStagePos_ (200.0),
    pos_ (0.0),
